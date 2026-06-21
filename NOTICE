@@ -1,0 +1,8 @@
+Hanzo KMS — Terraform Provider
+Copyright (c) 2025-2026 Hanzo AI, Inc.
+Licensed under the Mozilla Public License 2.0 (see LICENSE).
+
+Third-party software:
+- Derived from Infisical's Terraform provider, Mozilla Public License 2.0.
+- Built on the HashiCorp Terraform Plugin Framework, Copyright (c) 2021 HashiCorp, Inc.,
+  Mozilla Public License 2.0. See per-file headers.
