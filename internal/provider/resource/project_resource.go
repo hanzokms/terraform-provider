@@ -3,9 +3,9 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
 
 	"time"
 
@@ -38,7 +38,7 @@ func NewProjectResource() resource.Resource {
 
 // projectResource is the resource implementation.
 type projectResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // projectResourceSourceModel describes the data source data model.
@@ -64,13 +64,13 @@ func (r *projectResource) Metadata(_ context.Context, req resource.MetadataReque
 // Schema defines the schema for the resource.
 func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create projects & save to Infisical. Only Machine Identity authentication is supported for this data source.",
+		Description: "Create projects & save to Kms. Only Machine Identity authentication is supported for this data source.",
 		Attributes: map[string]schema.Attribute{
 			"slug": schema.StringAttribute{
 				Description: "The slug of the project",
 				Required:    true,
 				Validators: []validator.String{
-					infisicaltf.SlugRegexValidator,
+					kmstf.SlugRegexValidator,
 				},
 			},
 			"name": schema.StringAttribute{
@@ -137,7 +137,7 @@ func (r *projectResource) Configure(_ context.Context, req resource.ConfigureReq
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -179,7 +179,7 @@ func (r *projectResource) Create(ctx context.Context, req resource.CreateRequest
 		projectType = plan.Type.ValueString()
 	}
 
-	newProject, err := r.client.CreateProject(infisical.CreateProjectRequest{
+	newProject, err := r.client.CreateProject(kmsclient.CreateProjectRequest{
 		ProjectName:             plan.Name.ValueString(),
 		ProjectDescription:      plan.Description.ValueString(),
 		Slug:                    plan.Slug.ValueString(),
@@ -199,7 +199,7 @@ func (r *projectResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	if !plan.AuditLogRetentionDays.IsNull() && !plan.AuditLogRetentionDays.IsUnknown() {
-		_, err := r.client.UpdateProjectAuditLogRetention(infisical.UpdateProjectAuditLogRetentionRequest{
+		_, err := r.client.UpdateProjectAuditLogRetention(kmsclient.UpdateProjectAuditLogRetentionRequest{
 			ProjectSlug: plan.Slug.ValueString(),
 			Days:        plan.AuditLogRetentionDays.ValueInt64(),
 		})
@@ -212,7 +212,7 @@ func (r *projectResource) Create(ctx context.Context, req resource.CreateRequest
 		}
 	}
 
-	project, err := r.client.GetProjectById(infisical.GetProjectByIdRequest{
+	project, err := r.client.GetProjectById(kmsclient.GetProjectByIdRequest{
 		ID: newProject.Project.ID,
 	})
 
@@ -261,12 +261,12 @@ func (r *projectResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	// Get the latest data from the API
-	project, err := r.client.GetProjectById(infisical.GetProjectByIdRequest{
+	project, err := r.client.GetProjectById(kmsclient.GetProjectByIdRequest{
 		ID: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -357,7 +357,7 @@ func (r *projectResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	updateRequest := infisical.UpdateProjectRequest{
+	updateRequest := kmsclient.UpdateProjectRequest{
 		ProjectName:         plan.Name.ValueString(),
 		ProjectId:           plan.ID.ValueString(),
 		ProjectSlug:         plan.Slug.ValueString(),
@@ -379,7 +379,7 @@ func (r *projectResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	if state.AuditLogRetentionDays != plan.AuditLogRetentionDays && !plan.AuditLogRetentionDays.IsNull() && !plan.AuditLogRetentionDays.IsUnknown() {
-		_, err := r.client.UpdateProjectAuditLogRetention(infisical.UpdateProjectAuditLogRetentionRequest{
+		_, err := r.client.UpdateProjectAuditLogRetention(kmsclient.UpdateProjectAuditLogRetentionRequest{
 			ProjectSlug: plan.Slug.ValueString(),
 			Days:        plan.AuditLogRetentionDays.ValueInt64(),
 		})
@@ -392,7 +392,7 @@ func (r *projectResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
-	project, err := r.client.GetProjectById(infisical.GetProjectByIdRequest{
+	project, err := r.client.GetProjectById(kmsclient.GetProjectByIdRequest{
 		ID: plan.ID.ValueString(),
 	})
 
@@ -441,7 +441,7 @@ func (r *projectResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	err := r.client.DeleteProject(infisical.DeleteProjectRequest{
+	err := r.client.DeleteProject(kmsclient.DeleteProjectRequest{
 		Slug: state.Slug.ValueString(),
 	})
 
@@ -457,12 +457,12 @@ func (r *projectResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 func (r *projectResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 
-	project, err := r.client.GetProjectById(infisical.GetProjectByIdRequest{
+	project, err := r.client.GetProjectById(kmsclient.GetProjectByIdRequest{
 		ID: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Project not found",
 				"The project with the given ID was not found",
@@ -470,7 +470,7 @@ func (r *projectResource) ImportState(ctx context.Context, req resource.ImportSt
 		} else {
 			resp.Diagnostics.AddError(
 				"Error fetching project",
-				"Couldn't fetch project from Infisical, unexpected error: "+err.Error(),
+				"Couldn't fetch project from Kms, unexpected error: "+err.Error(),
 			)
 		}
 		return

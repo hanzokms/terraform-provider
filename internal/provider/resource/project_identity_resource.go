@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -28,7 +28,7 @@ func NewProjectIdentityResource() resource.Resource {
 
 // ProjectIdentityResource is the resource implementation.
 type ProjectIdentityResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // projectResourceSourceModel describes the data source data model.
@@ -65,7 +65,7 @@ func (r *ProjectIdentityResource) Metadata(_ context.Context, req resource.Metad
 // Schema defines the schema for the resource.
 func (r *ProjectIdentityResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create project identities & save to Infisical. Only Machine Identity authentication is supported for this data source",
+		Description: "Create project identities & save to Kms. Only Machine Identity authentication is supported for this data source",
 		Attributes: map[string]schema.Attribute{
 			"project_id": schema.StringAttribute{
 				Description: "The id of the project",
@@ -157,7 +157,7 @@ func (r *ProjectIdentityResource) Configure(_ context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -189,7 +189,7 @@ func (r *ProjectIdentityResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	var roles []infisical.CreateProjectIdentityRequestRoles
+	var roles []kmsclient.CreateProjectIdentityRequestRoles
 	var hasAtleastOnePermanentRole bool
 	for _, el := range plan.Roles {
 		isTemporary := el.IsTemporary.ValueBool()
@@ -221,7 +221,7 @@ func (r *ProjectIdentityResource) Create(ctx context.Context, req resource.Creat
 			temporaryRange = "1h"
 		}
 
-		roles = append(roles, infisical.CreateProjectIdentityRequestRoles{
+		roles = append(roles, kmsclient.CreateProjectIdentityRequestRoles{
 			Role:                     el.RoleSlug.ValueString(),
 			IsTemporary:              isTemporary,
 			TemporaryMode:            temporaryMode,
@@ -234,7 +234,7 @@ func (r *ProjectIdentityResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	_, err := r.client.CreateProjectIdentity(infisical.CreateProjectIdentityRequest{
+	_, err := r.client.CreateProjectIdentity(kmsclient.CreateProjectIdentityRequest{
 		ProjectID:  plan.ProjectID.ValueString(),
 		IdentityID: plan.IdentityID.ValueString(),
 		Roles:      roles,
@@ -247,7 +247,7 @@ func (r *ProjectIdentityResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	projectIdentityDetails, err := r.client.GetProjectIdentityByID(infisical.GetProjectIdentityByIDRequest{
+	projectIdentityDetails, err := r.client.GetProjectIdentityByID(kmsclient.GetProjectIdentityByIDRequest{
 		ProjectID:  plan.ProjectID.ValueString(),
 		IdentityID: plan.IdentityID.ValueString(),
 	})
@@ -333,13 +333,13 @@ func (r *ProjectIdentityResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	projectIdentityDetails, err := r.client.GetProjectIdentityByID(infisical.GetProjectIdentityByIDRequest{
+	projectIdentityDetails, err := r.client.GetProjectIdentityByID(kmsclient.GetProjectIdentityByIDRequest{
 		ProjectID:  state.ProjectID.ValueString(),
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -434,7 +434,7 @@ func (r *ProjectIdentityResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	var roles []infisical.UpdateProjectIdentityRequestRoles
+	var roles []kmsclient.UpdateProjectIdentityRequestRoles
 	var hasAtleastOnePermanentRole bool
 	for _, el := range plan.Roles {
 		isTemporary := el.IsTemporary.ValueBool()
@@ -466,7 +466,7 @@ func (r *ProjectIdentityResource) Update(ctx context.Context, req resource.Updat
 			temporaryRange = "1h"
 		}
 
-		roles = append(roles, infisical.UpdateProjectIdentityRequestRoles{
+		roles = append(roles, kmsclient.UpdateProjectIdentityRequestRoles{
 			Role:                     el.RoleSlug.ValueString(),
 			IsTemporary:              isTemporary,
 			TemporaryMode:            temporaryMode,
@@ -480,7 +480,7 @@ func (r *ProjectIdentityResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	_, err := r.client.UpdateProjectIdentity(infisical.UpdateProjectIdentityRequest{
+	_, err := r.client.UpdateProjectIdentity(kmsclient.UpdateProjectIdentityRequest{
 		ProjectID:  plan.ProjectID.ValueString(),
 		IdentityID: plan.IdentityID.ValueString(),
 		Roles:      roles,
@@ -493,7 +493,7 @@ func (r *ProjectIdentityResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	projectIdentityDetails, err := r.client.GetProjectIdentityByID(infisical.GetProjectIdentityByIDRequest{
+	projectIdentityDetails, err := r.client.GetProjectIdentityByID(kmsclient.GetProjectIdentityByIDRequest{
 		ProjectID:  plan.ProjectID.ValueString(),
 		IdentityID: plan.IdentityID.ValueString(),
 	})
@@ -572,7 +572,7 @@ func (r *ProjectIdentityResource) Delete(ctx context.Context, req resource.Delet
 		return
 	}
 
-	_, err := r.client.DeleteProjectIdentity(infisical.DeleteProjectIdentityRequest{
+	_, err := r.client.DeleteProjectIdentity(kmsclient.DeleteProjectIdentityRequest{
 		ProjectID:  state.ProjectID.ValueString(),
 		IdentityID: state.IdentityID.ValueString(),
 	})
@@ -588,7 +588,7 @@ func (r *ProjectIdentityResource) Delete(ctx context.Context, req resource.Delet
 }
 
 func (r *ProjectIdentityResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	projectIdentityDetails, err := r.client.GetProjectIdentityByMembershipID(infisical.GetProjectIdentityByMembershipIDRequest{
+	projectIdentityDetails, err := r.client.GetProjectIdentityByMembershipID(kmsclient.GetProjectIdentityByMembershipIDRequest{
 		MembershipID: req.ID,
 	})
 	if err != nil {

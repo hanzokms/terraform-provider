@@ -1,14 +1,14 @@
 terraform {
   required_providers {
-    infisical = {
+    kms = {
       # version = <latest version>
-      source = "infisical/infisical"
+      source = "hanzokms/kms"
     }
   }
 }
 
-provider "infisical" {
-  host = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+provider "kms" {
+  host = "https://kms.hanzo.ai" # Only required if using self hosted instance of Hanzo KMS, default is https://kms.hanzo.ai
   auth = {
     universal = {
       client_id     = "<machine-identity-client-id>"
@@ -17,13 +17,13 @@ provider "infisical" {
   }
 }
 
-resource "infisical_project" "example" {
+resource "kms_project" "example" {
   name = "example"
   slug = "example"
 }
 
-resource "infisical_project_role" "biller" {
-  project_slug = infisical_project.example.slug
+resource "kms_project_role" "biller" {
+  project_slug = kms_project.example.slug
   name         = "Tester"
   description  = "A test role"
   slug         = "tester"

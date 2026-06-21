@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -27,7 +27,7 @@ func NewProjectUserResource() resource.Resource {
 
 // ProjectUserResource is the resource implementation.
 type ProjectUserResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // projectResourceSourceModel describes the data source data model.
@@ -68,7 +68,7 @@ func (r *ProjectUserResource) Metadata(_ context.Context, req resource.MetadataR
 // Schema defines the schema for the resource.
 func (r *ProjectUserResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create project users & save to Infisical. Only Machine Identity authentication is supported for this resource",
+		Description: "Create project users & save to Kms. Only Machine Identity authentication is supported for this resource",
 		Attributes: map[string]schema.Attribute{
 			"project_id": schema.StringAttribute{
 				Description:   "The id of the project",
@@ -163,7 +163,7 @@ func (r *ProjectUserResource) Configure(_ context.Context, req resource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -195,7 +195,7 @@ func (r *ProjectUserResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	var roles []infisical.UpdateProjectUserRequestRoles
+	var roles []kmsclient.UpdateProjectUserRequestRoles
 	var hasAtleastOnePermanentRole bool
 	for _, el := range plan.Roles {
 		isTemporary := el.IsTemporary.ValueBool()
@@ -227,7 +227,7 @@ func (r *ProjectUserResource) Create(ctx context.Context, req resource.CreateReq
 			temporaryRange = "1h"
 		}
 
-		roles = append(roles, infisical.UpdateProjectUserRequestRoles{
+		roles = append(roles, kmsclient.UpdateProjectUserRequestRoles{
 			Role:                     el.RoleSlug.ValueString(),
 			IsTemporary:              isTemporary,
 			TemporaryMode:            temporaryMode,
@@ -240,7 +240,7 @@ func (r *ProjectUserResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	invitedUser, err := r.client.InviteUsersToProject(infisical.InviteUsersToProjectRequest{
+	invitedUser, err := r.client.InviteUsersToProject(kmsclient.InviteUsersToProjectRequest{
 		ProjectID: plan.ProjectID.ValueString(),
 		Usernames: []string{plan.Username.ValueString()},
 	})
@@ -254,7 +254,7 @@ func (r *ProjectUserResource) Create(ctx context.Context, req resource.CreateReq
 
 	var membershipId string
 	if len(invitedUser) == 0 {
-		projectMember, err := r.client.GetProjectUserByUsername(infisical.GetProjectUserByUserNameRequest{
+		projectMember, err := r.client.GetProjectUserByUsername(kmsclient.GetProjectUserByUserNameRequest{
 			ProjectID: plan.ProjectID.ValueString(),
 			Username:  plan.Username.ValueString(),
 		})
@@ -272,7 +272,7 @@ func (r *ProjectUserResource) Create(ctx context.Context, req resource.CreateReq
 		membershipId = invitedUser[0].ID
 	}
 
-	_, err = r.client.UpdateProjectUser(infisical.UpdateProjectUserRequest{
+	_, err = r.client.UpdateProjectUser(kmsclient.UpdateProjectUserRequest{
 		ProjectID:    plan.ProjectID.ValueString(),
 		MembershipID: membershipId,
 		Roles:        roles,
@@ -285,7 +285,7 @@ func (r *ProjectUserResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	projectUserDetails, err := r.client.GetProjectUserByUsername(infisical.GetProjectUserByUserNameRequest{
+	projectUserDetails, err := r.client.GetProjectUserByUsername(kmsclient.GetProjectUserByUserNameRequest{
 		ProjectID: plan.ProjectID.ValueString(),
 		Username:  plan.Username.ValueString(),
 	})
@@ -367,13 +367,13 @@ func (r *ProjectUserResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	projectUserDetails, err := r.client.GetProjectUserByUsername(infisical.GetProjectUserByUserNameRequest{
+	projectUserDetails, err := r.client.GetProjectUserByUsername(kmsclient.GetProjectUserByUserNameRequest{
 		ProjectID: state.ProjectID.ValueString(),
 		Username:  state.Username.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -464,7 +464,7 @@ func (r *ProjectUserResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	var roles []infisical.UpdateProjectUserRequestRoles
+	var roles []kmsclient.UpdateProjectUserRequestRoles
 	var hasAtleastOnePermanentRole bool
 	for _, el := range plan.Roles {
 		isTemporary := el.IsTemporary.ValueBool()
@@ -496,7 +496,7 @@ func (r *ProjectUserResource) Update(ctx context.Context, req resource.UpdateReq
 			temporaryRange = "1h"
 		}
 
-		roles = append(roles, infisical.UpdateProjectUserRequestRoles{
+		roles = append(roles, kmsclient.UpdateProjectUserRequestRoles{
 			Role:                     el.RoleSlug.ValueString(),
 			IsTemporary:              isTemporary,
 			TemporaryMode:            temporaryMode,
@@ -510,7 +510,7 @@ func (r *ProjectUserResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	_, err := r.client.UpdateProjectUser(infisical.UpdateProjectUserRequest{
+	_, err := r.client.UpdateProjectUser(kmsclient.UpdateProjectUserRequest{
 		ProjectID:    plan.ProjectID.ValueString(),
 		MembershipID: plan.MembershipId.ValueString(),
 		Roles:        roles,
@@ -523,7 +523,7 @@ func (r *ProjectUserResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	projectUserDetails, err := r.client.GetProjectUserByUsername(infisical.GetProjectUserByUserNameRequest{
+	projectUserDetails, err := r.client.GetProjectUserByUsername(kmsclient.GetProjectUserByUserNameRequest{
 		ProjectID: plan.ProjectID.ValueString(),
 		Username:  plan.Username.ValueString(),
 	})
@@ -596,7 +596,7 @@ func (r *ProjectUserResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	_, err := r.client.DeleteProjectUser(infisical.DeleteProjectUserRequest{
+	_, err := r.client.DeleteProjectUser(kmsclient.DeleteProjectUserRequest{
 		ProjectID: state.ProjectID.ValueString(),
 		Username:  []string{state.Username.ValueString()},
 	})

@@ -1,41 +1,41 @@
-# Infisical Terraform Provider 
+# Hanzo KMS Terraform Provider 
 
 # Usage 
 
 ```
 terraform {
   required_providers {
-    infisical = {
+    kms = {
       # version = <latest version>
-      source = "infisical/infisical"
+      source = "hanzokms/kms"
     }
   }
 }
 
-provider "infisical" {
-  host          = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+provider "kms" {
+  host          = "https://kms.hanzo.ai" # Only required if using self hosted instance of Hanzo KMS, default is https://kms.hanzo.ai
   client_id     = "<>"
   client_secret = "<>"
 }
 
-data "infisical_secrets" "common-secrets" {
+data "kms_secrets" "common-secrets" {
   env_slug     = "dev"
   workspace_id = "PROJECT_ID"
   folder_path  = "/some-folder/another-folder"
 }
 
-data "infisical_secrets" "backend-secrets" {
+data "kms_secrets" "backend-secrets" {
   env_slug     = "prod"
   workspace_id = "PROJECT_ID"
   folder_path  = "/"
 }
 
 output "all-project-secrets" {
-  value = data.infisical_secrets.backend-secrets
+  value = data.kms_secrets.backend-secrets
 }
 
 output "single-secret" {
-  value = data.infisical_secrets.backend-secrets.secrets["SECRET-NAME"]
+  value = data.kms_secrets.backend-secrets.secrets["SECRET-NAME"]
 }
 ```
 

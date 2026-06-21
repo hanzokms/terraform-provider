@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/input"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/input"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -29,16 +29,16 @@ func NewIntegrationAwsSecretsManagerResource() resource.Resource {
 
 // IntegrationAwsSecretsManager is the resource implementation.
 type IntegrationAWSSecretsManagerResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type AwsSecretsManagerMetadataStruct struct {
-	SecretAWSTag []infisical.AwsTag `json:"secretAWSTag,omitempty"`
+	SecretAWSTag []kmsclient.AwsTag `json:"secretAWSTag,omitempty"`
 	SecretPrefix string             `json:"secretPrefix,omitempty"`
 }
 
 type AwsSecretsManagerOptions struct {
-	AwsTags          []infisical.AwsTag `tfsdk:"aws_tags" json:"secretAWSTag,omitempty"`
+	AwsTags          []kmsclient.AwsTag `tfsdk:"aws_tags" json:"secretAWSTag,omitempty"`
 	SecretPrefix     *string            `tfsdk:"secret_prefix"`
 	MetadataSyncMode *string            `tfsdk:"metadata_sync_mode"`
 }
@@ -74,7 +74,7 @@ func (r *IntegrationAWSSecretsManagerResource) Metadata(_ context.Context, req r
 // Schema defines the schema for the resource.
 func (r *IntegrationAWSSecretsManagerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "**Deprecated:** This resource is deprecated and will be removed in a future version. Use `infisical_secret_sync_aws_secrets_manager` instead.\n\nCreate AWS Secrets Manager integration & save to Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "**Deprecated:** This resource is deprecated and will be removed in a future version. Use `kms_secret_sync_aws_secrets_manager` instead.\n\nCreate AWS Secrets Manager integration & save to Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"options": schema.SingleNestedAttribute{
 				Description: "Integration options",
@@ -117,20 +117,20 @@ func (r *IntegrationAWSSecretsManagerResource) Schema(_ context.Context, _ resou
 					},
 					"metadata_sync_mode": schema.StringAttribute{
 						Optional:    true,
-						Description: "The sync mode for AWS tags. The supported options are `secret-metadata` and `custom`. If `secret-metadata` is selected, the metadata of the Infisical secrets are used as tags in AWS (only supported for one-to-one integrations). If `custom` is selected, then the key/value pairs in the `aws_tags` field is used.",
+						Description: "The sync mode for AWS tags. The supported options are `secret-metadata` and `custom`. If `secret-metadata` is selected, the metadata of the Kms secrets are used as tags in AWS (only supported for one-to-one integrations). If `custom` is selected, then the key/value pairs in the `aws_tags` field is used.",
 					},
 				},
 			},
 
 			"integration_auth_id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "The ID of the integration auth, used internally by Infisical.",
+				Description:   "The ID of the integration auth, used internally by Kms.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
 			"integration_id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "The ID of the integration, used internally by Infisical.",
+				Description:   "The ID of the integration, used internally by Kms.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
@@ -158,7 +158,7 @@ func (r *IntegrationAWSSecretsManagerResource) Schema(_ context.Context, _ resou
 
 			"project_id": schema.StringAttribute{
 				Required:      true,
-				Description:   "The ID of your Infisical project.",
+				Description:   "The ID of your Kms project.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 
@@ -170,8 +170,8 @@ func (r *IntegrationAWSSecretsManagerResource) Schema(_ context.Context, _ resou
 			"mapping_behavior": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString(infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE),
-				Description: "The behavior of the mapping. Can be 'many-to-one' or 'one-to-one'. Many to One: All Infisical secrets will be mapped to a single AWS secret. One to One: Each Infisical secret will be mapped to its own AWS secret.",
+				Default:     stringdefault.StaticString(kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE),
+				Description: "The behavior of the mapping. Can be 'many-to-one' or 'one-to-one'. Many to One: All Kms secrets will be mapped to a single AWS secret. One to One: Each Kms secret will be mapped to its own AWS secret.",
 			},
 
 			"secrets_manager_path": schema.StringAttribute{
@@ -181,7 +181,7 @@ func (r *IntegrationAWSSecretsManagerResource) Schema(_ context.Context, _ resou
 
 			"secret_path": schema.StringAttribute{
 				Required:    true,
-				Description: "The secret path in Infisical to sync secrets from.",
+				Description: "The secret path in Kms to sync secrets from.",
 			},
 		},
 	}
@@ -193,7 +193,7 @@ func (r *IntegrationAWSSecretsManagerResource) Configure(_ context.Context, req 
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -225,7 +225,7 @@ func (r *IntegrationAWSSecretsManagerResource) Create(ctx context.Context, req r
 		return
 	}
 
-	if plan.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && (plan.AWSPath.IsNull() || plan.AWSPath.ValueString() == "") {
+	if plan.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && (plan.AWSPath.IsNull() || plan.AWSPath.ValueString() == "") {
 		resp.Diagnostics.AddError(
 			"Invalid plan",
 			"secrets_manager_path is required when mapping_behavior is 'many-to-one'",
@@ -233,7 +233,7 @@ func (r *IntegrationAWSSecretsManagerResource) Create(ctx context.Context, req r
 		return
 	}
 
-	if plan.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && (!plan.AWSPath.IsNull() && plan.AWSPath.ValueString() != "") {
+	if plan.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && (!plan.AWSPath.IsNull() && plan.AWSPath.ValueString() != "") {
 		resp.Diagnostics.AddError(
 			"Invalid plan",
 			"secrets_manager_path should not be used when mapping_behavior is 'one-to-one'",
@@ -251,9 +251,9 @@ func (r *IntegrationAWSSecretsManagerResource) Create(ctx context.Context, req r
 		return
 	}
 
-	createIntegrationAuthRequest := infisical.CreateIntegrationAuthRequest{
+	createIntegrationAuthRequest := kmsclient.CreateIntegrationAuthRequest{
 		ProjectID:   plan.ProjectID.ValueString(),
-		Integration: infisical.IntegrationAuthTypeAwsSecretsManager,
+		Integration: kmsclient.IntegrationAuthTypeAwsSecretsManager,
 	}
 
 	if authMethod == pkg.AwsAuthMethodAccessKey {
@@ -284,7 +284,7 @@ func (r *IntegrationAWSSecretsManagerResource) Create(ctx context.Context, req r
 		}
 	}
 
-	if plan.MappingBehavior.ValueString() != infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && planOptions.MetadataSyncMode != nil && *planOptions.MetadataSyncMode == METADATA_SYNC_MODE_SECRET_METADATA {
+	if plan.MappingBehavior.ValueString() != kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && planOptions.MetadataSyncMode != nil && *planOptions.MetadataSyncMode == METADATA_SYNC_MODE_SECRET_METADATA {
 		resp.Diagnostics.AddError(
 			"Invalid plan",
 			"cannot use secret metadata sync mode when mapping_behavior is 'many-to-one'",
@@ -306,14 +306,14 @@ func (r *IntegrationAWSSecretsManagerResource) Create(ctx context.Context, req r
 	if planOptions.AwsTags != nil {
 		metadataMap["secretAWSTag"] = planOptions.AwsTags
 	} else {
-		metadataMap["secretAWSTag"] = []infisical.AwsTag{}
+		metadataMap["secretAWSTag"] = []kmsclient.AwsTag{}
 	}
 
 	if planOptions.MetadataSyncMode != nil && *planOptions.MetadataSyncMode != "" {
 		metadataMap["metadataSyncMode"] = planOptions.MetadataSyncMode
 	}
 
-	request := infisical.CreateIntegrationRequest{
+	request := kmsclient.CreateIntegrationRequest{
 		IntegrationAuthID: auth.IntegrationAuth.ID,
 		Region:            plan.AWSRegion.ValueString(),
 		Metadata:          metadataMap,
@@ -321,7 +321,7 @@ func (r *IntegrationAWSSecretsManagerResource) Create(ctx context.Context, req r
 		SourceEnvironment: plan.Environment.ValueString(),
 	}
 
-	if plan.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE {
+	if plan.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE {
 		request.App = plan.AWSPath.ValueString()
 	}
 
@@ -366,12 +366,12 @@ func (r *IntegrationAWSSecretsManagerResource) Read(ctx context.Context, req res
 		return
 	}
 
-	integration, err := r.client.GetIntegration(infisical.GetIntegrationRequest{
+	integration, err := r.client.GetIntegration(kmsclient.GetIntegrationRequest{
 		ID: state.IntegrationID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 		} else {
 			resp.Diagnostics.AddError(
@@ -460,7 +460,7 @@ func (r *IntegrationAWSSecretsManagerResource) Update(ctx context.Context, req r
 		}
 	}
 
-	if plan.MappingBehavior.ValueString() != infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && planOptions.MetadataSyncMode != nil && *planOptions.MetadataSyncMode == METADATA_SYNC_MODE_SECRET_METADATA {
+	if plan.MappingBehavior.ValueString() != kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && planOptions.MetadataSyncMode != nil && *planOptions.MetadataSyncMode == METADATA_SYNC_MODE_SECRET_METADATA {
 		resp.Diagnostics.AddError(
 			"Invalid plan",
 			"cannot use secret metadata sync mode when mapping_behavior is 'many-to-one'",
@@ -468,7 +468,7 @@ func (r *IntegrationAWSSecretsManagerResource) Update(ctx context.Context, req r
 		return
 	}
 
-	if plan.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && (plan.AWSPath.IsNull() || plan.AWSPath.ValueString() == "") {
+	if plan.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && (plan.AWSPath.IsNull() || plan.AWSPath.ValueString() == "") {
 		resp.Diagnostics.AddError(
 			"Invalid plan",
 			"secrets_manager_path is required when mapping_behavior is 'many-to-one'",
@@ -476,7 +476,7 @@ func (r *IntegrationAWSSecretsManagerResource) Update(ctx context.Context, req r
 		return
 	}
 
-	if plan.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && (!plan.AWSPath.IsNull() && plan.AWSPath.ValueString() != "") {
+	if plan.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && (!plan.AWSPath.IsNull() && plan.AWSPath.ValueString() != "") {
 		resp.Diagnostics.AddError(
 			"Invalid plan",
 			"secrets_manager_path should not be used when mapping_behavior is 'one-to-one'",
@@ -484,8 +484,8 @@ func (r *IntegrationAWSSecretsManagerResource) Update(ctx context.Context, req r
 		return
 	}
 
-	updateIntegrationAuthRequest := infisical.UpdateIntegrationAuthRequest{
-		Integration:       infisical.IntegrationAuthTypeAwsSecretsManager,
+	updateIntegrationAuthRequest := kmsclient.UpdateIntegrationAuthRequest{
+		Integration:       kmsclient.IntegrationAuthTypeAwsSecretsManager,
 		IntegrationAuthId: plan.IntegrationAuthID.ValueString(),
 	}
 
@@ -526,14 +526,14 @@ func (r *IntegrationAWSSecretsManagerResource) Update(ctx context.Context, req r
 	if planOptions.AwsTags != nil {
 		metadataMap["secretAWSTag"] = planOptions.AwsTags
 	} else {
-		metadataMap["secretAWSTag"] = []infisical.AwsTag{}
+		metadataMap["secretAWSTag"] = []kmsclient.AwsTag{}
 	}
 
 	if planOptions.MetadataSyncMode != nil && *planOptions.MetadataSyncMode != "" {
 		metadataMap["metadataSyncMode"] = planOptions.MetadataSyncMode
 	}
 
-	updateIntegrationRequest := infisical.UpdateIntegrationRequest{
+	updateIntegrationRequest := kmsclient.UpdateIntegrationRequest{
 		ID:          state.IntegrationID.ValueString(),
 		Metadata:    metadataMap,
 		Environment: plan.Environment.ValueString(),
@@ -542,7 +542,7 @@ func (r *IntegrationAWSSecretsManagerResource) Update(ctx context.Context, req r
 		IsActive:    true,
 	}
 
-	if plan.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE {
+	if plan.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE {
 		updateIntegrationRequest.App = plan.AWSPath.ValueString()
 	}
 
@@ -585,7 +585,7 @@ func (r *IntegrationAWSSecretsManagerResource) Delete(ctx context.Context, req r
 		return
 	}
 
-	_, err := r.client.DeleteIntegrationAuth(infisical.DeleteIntegrationAuthRequest{
+	_, err := r.client.DeleteIntegrationAuth(kmsclient.DeleteIntegrationAuthRequest{
 		ID: state.IntegrationAuthID.ValueString(),
 	})
 

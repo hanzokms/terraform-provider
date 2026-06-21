@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -35,10 +35,10 @@ type SecretSyncAwsParameterStoreSyncOptionsModel struct {
 
 func NewSecretSyncAwsParameterStoreResource() resource.Resource {
 	return &SecretSyncBaseResource{
-		App:              infisical.SecretSyncAppAWSParameterStore,
+		App:              kmsclient.SecretSyncAppAWSParameterStore,
 		SyncName:         "AWS Parameter Store",
 		ResourceTypeName: "_secret_sync_aws_parameter_store",
-		AppConnection:    infisical.AppConnectionAppAWS,
+		AppConnection:    kmsclient.AppConnectionAppAWS,
 		CanImportSecrets: true,
 		DestinationConfigAttributes: map[string]schema.Attribute{
 			"aws_region": schema.StringAttribute{
@@ -53,12 +53,12 @@ func NewSecretSyncAwsParameterStoreResource() resource.Resource {
 		SyncOptionsAttributes: map[string]schema.Attribute{
 			"initial_sync_behavior": schema.StringAttribute{
 				Required:    true,
-				Description: "Specify how Infisical should resolve the initial sync to the destination. Supported options: overwrite-destination, import-prioritize-source, import-prioritize-destination",
+				Description: "Specify how Kms should resolve the initial sync to the destination. Supported options: overwrite-destination, import-prioritize-source, import-prioritize-destination",
 			},
 			"disable_secret_deletion": schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "When set to true, Infisical will not remove secrets from AWS Parameter Store. Enable this option if you intend to manage some secrets manually outside of Infisical.",
+				Description: "When set to true, Kms will not remove secrets from AWS Parameter Store. Enable this option if you intend to manage some secrets manually outside of Kms.",
 				Default:     booldefault.StaticBool(false),
 			},
 			"aws_kms_key_id": schema.StringAttribute{
@@ -133,7 +133,7 @@ func NewSecretSyncAwsParameterStoreResource() resource.Resource {
 			return syncOptionsMap, nil
 		},
 
-		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			syncOptionsMap := make(map[string]attr.Value)
 
 			initialSyncBehavior, ok := secretSync.SyncOptions["initialSyncBehavior"].(string)
@@ -332,7 +332,7 @@ func NewSecretSyncAwsParameterStoreResource() resource.Resource {
 
 			return destinationConfig, diags
 		},
-		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			regionVal, ok := secretSync.DestinationConfig["region"].(string)

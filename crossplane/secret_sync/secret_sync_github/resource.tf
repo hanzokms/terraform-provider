@@ -1,14 +1,14 @@
 terraform {
   required_providers {
-    infisical = {
+    kms = {
       # version = <latest version>
-      source = "infisical/infisical"
+      source = "hanzokms/kms"
     }
   }
 }
 
-provider "infisical" {
-  host = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+provider "kms" {
+  host = "https://kms.hanzo.ai" # Only required if using self hosted instance of Hanzo KMS, default is https://kms.hanzo.ai
   auth = {
     universal = {
       client_id     = "<machine-identity-client-id>"
@@ -17,7 +17,7 @@ provider "infisical" {
   }
 }
 
-resource "infisical_secret_sync_github" "example-github-secret-sync" {
+resource "kms_secret_sync_github" "example-github-secret-sync" {
   name          = "github-secret-sync-demo"
   description   = "Demo of Github secret sync"
   project_id    = "<project-id>"
@@ -25,7 +25,7 @@ resource "infisical_secret_sync_github" "example-github-secret-sync" {
   secret_path   = "/" # Root folder is /
   connection_id = "<github-app-connection-id>"
 
-  sync_options = "{\"initial_sync_behavior\":\"overwrite-destination\",\"disable_secret_deletion\":false,\"key_schema\":\"INFISICAL_{{secretKey}}\"}"
+  sync_options = "{\"initial_sync_behavior\":\"overwrite-destination\",\"disable_secret_deletion\":false,\"key_schema\":\"KMS_{{secretKey}}\"}"
 
   destination_config = "{\"scope\":\"repository\",\"repository_owner\":\"<github-repository-owner>\",\"repository_name\":\"<github-repository-name>\"}"
 }

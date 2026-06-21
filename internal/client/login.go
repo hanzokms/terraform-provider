@@ -1,12 +1,9 @@
-package infisicalclient
+package kmsclient
 
 import (
-	"context"
 	"fmt"
+	"github.com/hanzokms/terraform-provider/internal/errors"
 	"os"
-	"terraform-provider-infisical/internal/errors"
-
-	infisicalSdk "github.com/infisical/go-sdk"
 )
 
 const (
@@ -66,7 +63,7 @@ func (client Client) GetServiceTokenDetailsV2() (GetServiceTokenDetailsResponse,
 func (client Client) OidcMachineIdentityAuth() (string, error) {
 	tokenEnvironmentName := client.Config.OidcTokenEnvName
 	if tokenEnvironmentName == "" {
-		tokenEnvironmentName = INFISICAL_AUTH_JWT_NAME
+		tokenEnvironmentName = KMS_AUTH_JWT_NAME
 	}
 
 	authJwt := os.Getenv(tokenEnvironmentName)
@@ -109,7 +106,7 @@ func (client Client) KubernetesMachineIdentityAuth() (string, error) {
 	tokenPath := client.Config.ServiceAccountTokenPath
 
 	if tokenPath == "" {
-		tokenPath = INFISICAL_KUBERNETES_SERVICE_ACCOUNT_DEFAULT_TOKEN_PATH
+		tokenPath = KMS_KUBERNETES_SERVICE_ACCOUNT_DEFAULT_TOKEN_PATH
 	}
 
 	if token == "" {
@@ -160,19 +157,5 @@ func (client Client) AwsIamMachineIdentityAuth() (string, error) {
 		return "", fmt.Errorf("you must set the identity ID for the client before making calls")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	infisicalClient := infisicalSdk.NewInfisicalClient(ctx, infisicalSdk.Config{
-		SiteUrl:          client.Config.HostURL,
-		AutoTokenRefresh: false,
-	})
-
-	credential, err := infisicalClient.Auth().WithOrganizationSlug(client.Config.OrganizationSlug).AwsIamAuthLogin(client.Config.IdentityId)
-
-	if err != nil {
-		return "", fmt.Errorf("AwsIamMachineIdentityAuth: Unable to get machine identity token [err=%s]", err)
-	}
-
-	return credential.AccessToken, nil
+	return client.awsIamMachineIdentityLogin(client.Config.IdentityId, client.Config.OrganizationSlug)
 }

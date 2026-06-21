@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -23,7 +23,7 @@ const AppConnectionGitlabAuthMethodAccessToken = "access-token"
 
 func NewAppConnectionGitlabResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppGitlab,
+		App:               kmsclient.AppConnectionAppGitlab,
 		AppConnectionName: "GitLab",
 		ResourceTypeName:  "_app_connection_gitlab",
 		AllowedMethods:    []string{AppConnectionGitlabAuthMethodAccessToken},
@@ -54,7 +54,7 @@ func NewAppConnectionGitlabResource() resource.Resource {
 			if plan.Method.ValueString() != AppConnectionGitlabAuthMethodAccessToken {
 				diags.AddError(
 					"Unable to create GitLab app connection",
-					"Invalid method. Only access-token method is supported. Note: GitLab OAuth connections must be created through the Infisical UI.",
+					"Invalid method. Only access-token method is supported. Note: GitLab OAuth connections must be created through the Kms UI.",
 				)
 				return nil, diags
 			}
@@ -96,7 +96,7 @@ func NewAppConnectionGitlabResource() resource.Resource {
 			if plan.Method.ValueString() != AppConnectionGitlabAuthMethodAccessToken {
 				diags.AddError(
 					"Unable to update GitLab app connection",
-					"Invalid method. Only access-token method is supported. Note: GitLab OAuth connections must be created through the Infisical UI.",
+					"Invalid method. Only access-token method is supported. Note: GitLab OAuth connections must be created through the Kms UI.",
 				)
 				return nil, diags
 			}

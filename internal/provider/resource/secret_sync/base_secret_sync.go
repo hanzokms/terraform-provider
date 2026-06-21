@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -16,21 +16,21 @@ import (
 
 // SecretSyncBaseResource is the resource implementation.
 type SecretSyncBaseResource struct {
-	App                                    infisical.SecretSyncApp // used for identifying secret sync route
+	App                                    kmsclient.SecretSyncApp // used for identifying secret sync route
 	ResourceTypeName                       string                  // terraform resource name suffix
 	SyncName                               string                  // complete descriptive name of the secret sync
-	AppConnection                          infisical.AppConnectionApp
+	AppConnection                          kmsclient.AppConnectionApp
 	CanImportSecrets                       bool // whether this sync destination supports importing secrets from the destination
-	client                                 *infisical.Client
+	client                                 *kmsclient.Client
 	DestinationConfigAttributes            map[string]schema.Attribute
 	ReadDestinationConfigForCreateFromPlan func(ctx context.Context, plan SecretSyncBaseResourceModel) (map[string]interface{}, diag.Diagnostics)
 	ReadDestinationConfigForUpdateFromPlan func(ctx context.Context, plan SecretSyncBaseResourceModel, state SecretSyncBaseResourceModel) (map[string]interface{}, diag.Diagnostics)
-	ReadDestinationConfigFromApi           func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics)
+	ReadDestinationConfigFromApi           func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics)
 
 	SyncOptionsAttributes            map[string]schema.Attribute
 	ReadSyncOptionsForCreateFromPlan func(ctx context.Context, plan SecretSyncBaseResourceModel) (map[string]interface{}, diag.Diagnostics)
 	ReadSyncOptionsForUpdateFromPlan func(ctx context.Context, plan SecretSyncBaseResourceModel, state SecretSyncBaseResourceModel) (map[string]interface{}, diag.Diagnostics)
-	ReadSyncOptionsFromApi           func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics)
+	ReadSyncOptionsFromApi           func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics)
 }
 
 type SecretSyncBaseResourceModel struct {
@@ -70,7 +70,7 @@ func (r *SecretSyncBaseResource) Schema(_ context.Context, _ resource.SchemaRequ
 			},
 			"project_id": schema.StringAttribute{
 				Required:      true,
-				Description:   "The ID of the Infisical project to create the sync in.",
+				Description:   "The ID of the Kms project to create the sync in.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"environment": schema.StringAttribute{
@@ -111,7 +111,7 @@ func (r *SecretSyncBaseResource) Configure(_ context.Context, req resource.Confi
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -167,7 +167,7 @@ func (r *SecretSyncBaseResource) ModifyPlan(ctx context.Context, req resource.Mo
 		return
 	}
 
-	checkRequest := infisical.CheckDuplicateDestinationRequest{
+	checkRequest := kmsclient.CheckDuplicateDestinationRequest{
 		App:               r.App,
 		DestinationConfig: destinationConfigMap,
 		ProjectID:         plan.ProjectID.ValueString(),
@@ -205,13 +205,13 @@ func (r *SecretSyncBaseResource) addOverwriteDestinationWarnings(ctx context.Con
 	if !r.CanImportSecrets {
 		resp.Diagnostics.AddWarning(
 			fmt.Sprintf("Existing secrets from %s may be removed", r.SyncName),
-			fmt.Sprintf("Secrets not present in Infisical will be removed from the destination. Consider adding a key_schema or setting disable_secret_deletion to true if you do not want existing secrets to be removed from %s.", r.SyncName),
+			fmt.Sprintf("Secrets not present in Kms will be removed from the destination. Consider adding a key_schema or setting disable_secret_deletion to true if you do not want existing secrets to be removed from %s.", r.SyncName),
 		)
-	} else if initialSyncBehavior == string(infisical.SecretSyncBehaviorOverwriteDestination) {
+	} else if initialSyncBehavior == string(kmsclient.SecretSyncBehaviorOverwriteDestination) {
 		// Destination supports import but user chose overwrite - warn about secret deletion with import suggestion
 		resp.Diagnostics.AddWarning(
-			"Overwrite destination will remove secrets not present in Infisical",
-			fmt.Sprintf("Secrets not present in Infisical will be removed from the destination. If you have secrets in %s that you do not want deleted, consider setting initial_sync_behavior to import-prioritize-source or import-prioritize-destination. Alternatively, configure a key_schema or set disable_secret_deletion to true to have Infisical ignore these secrets.", r.SyncName),
+			"Overwrite destination will remove secrets not present in Kms",
+			fmt.Sprintf("Secrets not present in Kms will be removed from the destination. If you have secrets in %s that you do not want deleted, consider setting initial_sync_behavior to import-prioritize-source or import-prioritize-destination. Alternatively, configure a key_schema or set disable_secret_deletion to true to have Kms ignore these secrets.", r.SyncName),
 		)
 	}
 }
@@ -253,15 +253,15 @@ func (r *SecretSyncBaseResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	switch infisical.SecretSyncBehavior(initialSyncBehavior) {
-	case infisical.SecretSyncBehaviorOverwriteDestination, infisical.SecretSyncBehaviorPrioritizeDestination, infisical.SecretSyncBehaviorPrioritizeSource:
+	switch kmsclient.SecretSyncBehavior(initialSyncBehavior) {
+	case kmsclient.SecretSyncBehaviorOverwriteDestination, kmsclient.SecretSyncBehaviorPrioritizeDestination, kmsclient.SecretSyncBehaviorPrioritizeSource:
 		break
 	default:
 		resp.Diagnostics.AddError(
 			"Unable to create secret sync",
 			fmt.Sprintf("Invalid value for initial_sync_behavior field. Possible values are: %s, %s, %s",
-				infisical.SecretSyncBehaviorOverwriteDestination, infisical.SecretSyncBehaviorPrioritizeDestination,
-				infisical.SecretSyncBehaviorPrioritizeSource),
+				kmsclient.SecretSyncBehaviorOverwriteDestination, kmsclient.SecretSyncBehaviorPrioritizeDestination,
+				kmsclient.SecretSyncBehaviorPrioritizeSource),
 		)
 		return
 	}
@@ -272,7 +272,7 @@ func (r *SecretSyncBaseResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	secretSync, err := r.client.CreateSecretSync(infisical.CreateSecretSyncRequest{
+	secretSync, err := r.client.CreateSecretSync(kmsclient.CreateSecretSyncRequest{
 		App:               r.App,
 		Name:              plan.Name.ValueString(),
 		Description:       plan.Description.ValueString(),
@@ -320,13 +320,13 @@ func (r *SecretSyncBaseResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	secretSync, err := r.client.GetSecretSyncById(infisical.GetSecretSyncByIdRequest{
+	secretSync, err := r.client.GetSecretSyncById(kmsclient.GetSecretSyncByIdRequest{
 		App: r.App,
 		ID:  state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -408,15 +408,15 @@ func (r *SecretSyncBaseResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	switch infisical.SecretSyncBehavior(initialSyncBehavior) {
-	case infisical.SecretSyncBehaviorOverwriteDestination, infisical.SecretSyncBehaviorPrioritizeDestination, infisical.SecretSyncBehaviorPrioritizeSource:
+	switch kmsclient.SecretSyncBehavior(initialSyncBehavior) {
+	case kmsclient.SecretSyncBehaviorOverwriteDestination, kmsclient.SecretSyncBehaviorPrioritizeDestination, kmsclient.SecretSyncBehaviorPrioritizeSource:
 		break
 	default:
 		resp.Diagnostics.AddError(
 			"Unable to update secret sync",
 			fmt.Sprintf("Invalid value for initial_sync_behavior field. Possible values are: %s, %s, %s",
-				infisical.SecretSyncBehaviorOverwriteDestination, infisical.SecretSyncBehaviorPrioritizeDestination,
-				infisical.SecretSyncBehaviorPrioritizeSource),
+				kmsclient.SecretSyncBehaviorOverwriteDestination, kmsclient.SecretSyncBehaviorPrioritizeDestination,
+				kmsclient.SecretSyncBehaviorPrioritizeSource),
 		)
 		return
 	}
@@ -427,7 +427,7 @@ func (r *SecretSyncBaseResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	_, err := r.client.UpdateSecretSync(infisical.UpdateSecretSyncRequest{
+	_, err := r.client.UpdateSecretSync(kmsclient.UpdateSecretSyncRequest{
 		App:               r.App,
 		ID:                state.ID.ValueString(),
 		Name:              plan.Name.ValueString(),
@@ -472,7 +472,7 @@ func (r *SecretSyncBaseResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	_, err := r.client.DeleteSecretSync(infisical.DeleteSecretSyncRequest{
+	_, err := r.client.DeleteSecretSync(kmsclient.DeleteSecretSyncRequest{
 		App: r.App,
 		ID:  state.ID.ValueString(),
 	})
@@ -480,7 +480,7 @@ func (r *SecretSyncBaseResource) Delete(ctx context.Context, req resource.Delete
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting secret sync",
-			"Couldn't delete secret sync from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete secret sync from Kms, unexpected error: "+err.Error(),
 		)
 	}
 }

@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strconv"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -22,7 +22,7 @@ func NewIdentityUniversalAuthResource() resource.Resource {
 
 // IdentityUniversalAuthResource is the resource implementation.
 type IdentityUniversalAuthResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityUniversalAuthResourceSourceModel describes the data source data model.
@@ -48,7 +48,7 @@ func (r *IdentityUniversalAuthResource) Metadata(_ context.Context, req resource
 // Schema defines the schema for the resource.
 func (r *IdentityUniversalAuthResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity universal auth in Infisical.",
+		Description: "Create and manage identity universal auth in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the universal auth",
@@ -111,7 +111,7 @@ func (r *IdentityUniversalAuthResource) Configure(_ context.Context, req resourc
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -125,7 +125,7 @@ func (r *IdentityUniversalAuthResource) Configure(_ context.Context, req resourc
 	r.client = client
 }
 
-func updateUniversalAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityUniversalAuthResourceModel, newIdentityUniversalAuth *infisical.IdentityUniversalAuth) {
+func updateUniversalAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityUniversalAuthResourceModel, newIdentityUniversalAuth *kmsclient.IdentityUniversalAuth) {
 	plan.AccessTokenMaxTTL = types.Int64Value(newIdentityUniversalAuth.AccessTokenMaxTTL)
 	plan.AccessTokenTTL = types.Int64Value(newIdentityUniversalAuth.AccessTokenTTL)
 	plan.AccessTokenNumUsesLimit = types.Int64Value(newIdentityUniversalAuth.AccessTokenNumUsesLimit)
@@ -181,16 +181,16 @@ func updateUniversalAuthStateByApi(ctx context.Context, diagnose diag.Diagnostic
 	plan.ClientSecretTrustedIps = stateClientSecretTrustedIps
 }
 
-func tfPlanExpandIpFieldAsApiField(ctx context.Context, diagnostics diag.Diagnostics, planField types.List) []infisical.IdentityAuthTrustedIpRequest {
+func tfPlanExpandIpFieldAsApiField(ctx context.Context, diagnostics diag.Diagnostics, planField types.List) []kmsclient.IdentityAuthTrustedIpRequest {
 	var planAccessTokenTrustedIps []IdentityAwsAuthResourceTrustedIps
 	diags := planField.ElementsAs(ctx, &planAccessTokenTrustedIps, false)
 	diagnostics.Append(diags...)
 	if diagnostics.HasError() {
 		return nil
 	}
-	trustedIps := make([]infisical.IdentityAuthTrustedIpRequest, len(planAccessTokenTrustedIps))
+	trustedIps := make([]kmsclient.IdentityAuthTrustedIpRequest, len(planAccessTokenTrustedIps))
 	for i, ip := range planAccessTokenTrustedIps {
-		trustedIps[i] = infisical.IdentityAuthTrustedIpRequest{
+		trustedIps[i] = kmsclient.IdentityAuthTrustedIpRequest{
 			IPAddress: ip.IpAddress.ValueString(),
 		}
 	}
@@ -217,7 +217,7 @@ func (r *IdentityUniversalAuthResource) Create(ctx context.Context, req resource
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
 	clientSecretTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.ClientSecretTrustedIps)
-	newIdentityUniversalAuth, err := r.client.CreateIdentityUniversalAuth(infisical.CreateIdentityUniversalAuthRequest{
+	newIdentityUniversalAuth, err := r.client.CreateIdentityUniversalAuth(kmsclient.CreateIdentityUniversalAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		ClientSecretTrustedIPs:  clientSecretTrustedIps,
 		AccessTokenTrustedIPs:   accessTokenTrustedIps,
@@ -268,12 +268,12 @@ func (r *IdentityUniversalAuthResource) Read(ctx context.Context, req resource.R
 	}
 
 	// Get the latest data from the API
-	identityUniversalAuth, err := r.client.GetIdentityUniversalAuth(infisical.GetIdentityUniversalAuthRequest{
+	identityUniversalAuth, err := r.client.GetIdentityUniversalAuth(kmsclient.GetIdentityUniversalAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -320,7 +320,7 @@ func (r *IdentityUniversalAuthResource) Update(ctx context.Context, req resource
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
 	clientSecretTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.ClientSecretTrustedIps)
-	updatedIdentityUniversalAuth, err := r.client.UpdateIdentityUniversalAuth(infisical.UpdateIdentityUniversalAuthRequest{
+	updatedIdentityUniversalAuth, err := r.client.UpdateIdentityUniversalAuth(kmsclient.UpdateIdentityUniversalAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		ClientSecretTrustedIPs:  clientSecretTrustedIps,
 		AccessTokenTrustedIPs:   accessTokenTrustedIps,
@@ -364,7 +364,7 @@ func (r *IdentityUniversalAuthResource) Delete(ctx context.Context, req resource
 		return
 	}
 
-	_, err := r.client.RevokeIdentityUniversalAuth(infisical.RevokeIdentityUniversalAuthRequest{
+	_, err := r.client.RevokeIdentityUniversalAuth(kmsclient.RevokeIdentityUniversalAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 

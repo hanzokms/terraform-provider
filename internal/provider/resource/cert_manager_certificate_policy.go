@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -48,7 +48,7 @@ func NewCertManagerCertificatePolicyResource() resource.Resource {
 }
 
 type certManagerCertificatePolicyResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type certManagerCertificatePolicySubjectModel struct {
@@ -105,7 +105,7 @@ func (r *certManagerCertificatePolicyResource) Metadata(_ context.Context, req r
 
 func (r *certManagerCertificatePolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage certificate policies in Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create and manage certificate policies in Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"project_slug": schema.StringAttribute{
 				Description: "The slug of the cert-manager project",
@@ -288,11 +288,11 @@ func (r *certManagerCertificatePolicyResource) Configure(_ context.Context, req 
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *infisical.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *kmsclient.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -316,7 +316,7 @@ func (r *certManagerCertificatePolicyResource) Create(ctx context.Context, req r
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 	if err != nil {
@@ -324,16 +324,16 @@ func (r *certManagerCertificatePolicyResource) Create(ctx context.Context, req r
 		return
 	}
 
-	createPolicyRequest := infisical.CreateCertificatePolicyRequest{
+	createPolicyRequest := kmsclient.CreateCertificatePolicyRequest{
 		ProjectId:   project.ID,
 		Name:        plan.Name.ValueString(),
 		Description: plan.Description.ValueString(),
 	}
 
 	if len(plan.Subject) > 0 {
-		createPolicyRequest.Subject = make([]infisical.CertificatePolicySubject, len(plan.Subject))
+		createPolicyRequest.Subject = make([]kmsclient.CertificatePolicySubject, len(plan.Subject))
 		for i, subj := range plan.Subject {
-			createPolicyRequest.Subject[i] = infisical.CertificatePolicySubject{
+			createPolicyRequest.Subject[i] = kmsclient.CertificatePolicySubject{
 				Type: subj.Type.ValueString(),
 			}
 
@@ -358,9 +358,9 @@ func (r *certManagerCertificatePolicyResource) Create(ctx context.Context, req r
 	}
 
 	if len(plan.Sans) > 0 {
-		createPolicyRequest.Sans = make([]infisical.CertificatePolicySAN, len(plan.Sans))
+		createPolicyRequest.Sans = make([]kmsclient.CertificatePolicySAN, len(plan.Sans))
 		for i, san := range plan.Sans {
-			createPolicyRequest.Sans[i] = infisical.CertificatePolicySAN{
+			createPolicyRequest.Sans[i] = kmsclient.CertificatePolicySAN{
 				Type: san.Type.ValueString(),
 			}
 
@@ -385,7 +385,7 @@ func (r *certManagerCertificatePolicyResource) Create(ctx context.Context, req r
 	}
 
 	if plan.KeyUsages != nil {
-		createPolicyRequest.KeyUsages = &infisical.CertificatePolicyKeyUsages{}
+		createPolicyRequest.KeyUsages = &kmsclient.CertificatePolicyKeyUsages{}
 
 		if !plan.KeyUsages.Allowed.IsNull() {
 			allowed := make([]string, 0, len(plan.KeyUsages.Allowed.Elements()))
@@ -407,7 +407,7 @@ func (r *certManagerCertificatePolicyResource) Create(ctx context.Context, req r
 	}
 
 	if plan.ExtendedKeyUsages != nil {
-		createPolicyRequest.ExtendedKeyUsages = &infisical.CertificatePolicyExtendedKeyUsages{}
+		createPolicyRequest.ExtendedKeyUsages = &kmsclient.CertificatePolicyExtendedKeyUsages{}
 
 		if !plan.ExtendedKeyUsages.Allowed.IsNull() {
 			allowed := make([]string, 0, len(plan.ExtendedKeyUsages.Allowed.Elements()))
@@ -429,7 +429,7 @@ func (r *certManagerCertificatePolicyResource) Create(ctx context.Context, req r
 	}
 
 	if plan.Algorithms != nil {
-		createPolicyRequest.Algorithms = &infisical.CertificatePolicyAlgorithms{}
+		createPolicyRequest.Algorithms = &kmsclient.CertificatePolicyAlgorithms{}
 
 		if !plan.Algorithms.Signature.IsNull() {
 			signature := make([]string, 0, len(plan.Algorithms.Signature.Elements()))
@@ -445,7 +445,7 @@ func (r *certManagerCertificatePolicyResource) Create(ctx context.Context, req r
 	}
 
 	if plan.Validity != nil && !plan.Validity.Max.IsNull() {
-		createPolicyRequest.Validity = &infisical.CertificatePolicyValidity{
+		createPolicyRequest.Validity = &kmsclient.CertificatePolicyValidity{
 			Max: plan.Validity.Max.ValueString(),
 		}
 	}
@@ -482,11 +482,11 @@ func (r *certManagerCertificatePolicyResource) Read(ctx context.Context, req res
 
 	var state certManagerCertificatePolicyResourceModel
 
-	policy, err := r.client.GetCertificatePolicy(infisical.GetCertificatePolicyRequest{
+	policy, err := r.client.GetCertificatePolicy(kmsclient.GetCertificatePolicyRequest{
 		PolicyId: currentState.Id.ValueString(),
 	})
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -687,16 +687,16 @@ func (r *certManagerCertificatePolicyResource) Update(ctx context.Context, req r
 		return
 	}
 
-	updatePolicyRequest := infisical.UpdateCertificatePolicyRequest{
+	updatePolicyRequest := kmsclient.UpdateCertificatePolicyRequest{
 		PolicyId:    plan.Id.ValueString(),
 		Name:        plan.Name.ValueString(),
 		Description: plan.Description.ValueString(),
 	}
 
 	if len(plan.Subject) > 0 {
-		updatePolicyRequest.Subject = make([]infisical.CertificatePolicySubject, len(plan.Subject))
+		updatePolicyRequest.Subject = make([]kmsclient.CertificatePolicySubject, len(plan.Subject))
 		for i, subj := range plan.Subject {
-			updatePolicyRequest.Subject[i] = infisical.CertificatePolicySubject{
+			updatePolicyRequest.Subject[i] = kmsclient.CertificatePolicySubject{
 				Type: subj.Type.ValueString(),
 			}
 
@@ -721,9 +721,9 @@ func (r *certManagerCertificatePolicyResource) Update(ctx context.Context, req r
 	}
 
 	if len(plan.Sans) > 0 {
-		updatePolicyRequest.Sans = make([]infisical.CertificatePolicySAN, len(plan.Sans))
+		updatePolicyRequest.Sans = make([]kmsclient.CertificatePolicySAN, len(plan.Sans))
 		for i, san := range plan.Sans {
-			updatePolicyRequest.Sans[i] = infisical.CertificatePolicySAN{
+			updatePolicyRequest.Sans[i] = kmsclient.CertificatePolicySAN{
 				Type: san.Type.ValueString(),
 			}
 
@@ -748,7 +748,7 @@ func (r *certManagerCertificatePolicyResource) Update(ctx context.Context, req r
 	}
 
 	if plan.KeyUsages != nil {
-		updatePolicyRequest.KeyUsages = &infisical.CertificatePolicyKeyUsages{}
+		updatePolicyRequest.KeyUsages = &kmsclient.CertificatePolicyKeyUsages{}
 
 		if !plan.KeyUsages.Allowed.IsNull() {
 			allowed := make([]string, 0, len(plan.KeyUsages.Allowed.Elements()))
@@ -770,7 +770,7 @@ func (r *certManagerCertificatePolicyResource) Update(ctx context.Context, req r
 	}
 
 	if plan.ExtendedKeyUsages != nil {
-		updatePolicyRequest.ExtendedKeyUsages = &infisical.CertificatePolicyExtendedKeyUsages{}
+		updatePolicyRequest.ExtendedKeyUsages = &kmsclient.CertificatePolicyExtendedKeyUsages{}
 
 		if !plan.ExtendedKeyUsages.Allowed.IsNull() {
 			allowed := make([]string, 0, len(plan.ExtendedKeyUsages.Allowed.Elements()))
@@ -792,7 +792,7 @@ func (r *certManagerCertificatePolicyResource) Update(ctx context.Context, req r
 	}
 
 	if plan.Algorithms != nil {
-		updatePolicyRequest.Algorithms = &infisical.CertificatePolicyAlgorithms{}
+		updatePolicyRequest.Algorithms = &kmsclient.CertificatePolicyAlgorithms{}
 
 		if !plan.Algorithms.Signature.IsNull() {
 			signature := make([]string, 0, len(plan.Algorithms.Signature.Elements()))
@@ -808,7 +808,7 @@ func (r *certManagerCertificatePolicyResource) Update(ctx context.Context, req r
 	}
 
 	if plan.Validity != nil && !plan.Validity.Max.IsNull() {
-		updatePolicyRequest.Validity = &infisical.CertificatePolicyValidity{
+		updatePolicyRequest.Validity = &kmsclient.CertificatePolicyValidity{
 			Max: plan.Validity.Max.ValueString(),
 		}
 	}
@@ -842,7 +842,7 @@ func (r *certManagerCertificatePolicyResource) Delete(ctx context.Context, req r
 		return
 	}
 
-	_, err := r.client.DeleteCertificatePolicy(infisical.DeleteCertificatePolicyRequest{
+	_, err := r.client.DeleteCertificatePolicy(kmsclient.DeleteCertificatePolicyRequest{
 		PolicyId: state.Id.ValueString(),
 	})
 	if err != nil {

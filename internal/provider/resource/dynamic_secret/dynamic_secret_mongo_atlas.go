@@ -2,8 +2,8 @@ package resource
 
 import (
 	"context"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strconv"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -34,7 +34,7 @@ type DynamicSecretMongoAtlasConfigurationModel struct {
 
 func NewDynamicSecretMongoAtlasResource() resource.Resource {
 	return &DynamicSecretBaseResource{
-		Provider:          infisical.DynamicSecretProviderMongoAtlas,
+		Provider:          kmsclient.DynamicSecretProviderMongoAtlas,
 		ResourceTypeName:  "_dynamic_secret_mongo_atlas",
 		DynamicSecretName: "MongoDB Atlas",
 		ConfigurationAttributes: map[string]schema.Attribute{
@@ -142,7 +142,7 @@ func NewDynamicSecretMongoAtlasResource() resource.Resource {
 			return configurationMap, diags
 		},
 
-		ReadConfigurationFromApi: func(ctx context.Context, dynamicSecret infisical.DynamicSecret, configState types.Object) (types.Object, diag.Diagnostics) {
+		ReadConfigurationFromApi: func(ctx context.Context, dynamicSecret kmsclient.DynamicSecret, configState types.Object) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			var currentState DynamicSecretMongoAtlasConfigurationModel

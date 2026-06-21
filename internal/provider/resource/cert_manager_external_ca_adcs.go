@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -25,7 +25,7 @@ func NewCertManagerExternalCAADCSResource() resource.Resource {
 }
 
 type certManagerExternalCAADCSResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type certManagerExternalCAADCSResourceModel struct {
@@ -42,7 +42,7 @@ func (r *certManagerExternalCAADCSResource) Metadata(_ context.Context, req reso
 
 func (r *certManagerExternalCAADCSResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage external ADCS (Microsoft Active Directory Certificate Services) certificate authorities in Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create and manage external ADCS (Microsoft Active Directory Certificate Services) certificate authorities in Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"project_slug": schema.StringAttribute{
 				Description: "The slug of the cert-manager project",
@@ -84,7 +84,7 @@ func (r *certManagerExternalCAADCSResource) Configure(_ context.Context, req res
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -114,14 +114,14 @@ func (r *certManagerExternalCAADCSResource) Create(ctx context.Context, req reso
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading project",
-			"Couldn't read project from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read project from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -131,11 +131,11 @@ func (r *certManagerExternalCAADCSResource) Create(ctx context.Context, req reso
 		status = plan.Status.ValueString()
 	}
 
-	newCA, err := r.client.CreateADCSCA(infisical.CreateADCSCARequest{
+	newCA, err := r.client.CreateADCSCA(kmsclient.CreateADCSCARequest{
 		ProjectId: project.ID,
 		Name:      plan.Name.ValueString(),
 		Status:    status,
-		Configuration: infisical.CertificateAuthorityConfiguration{
+		Configuration: kmsclient.CertificateAuthorityConfiguration{
 			AzureAdcsConnectionId: plan.AzureAdcsConnectionId.ValueString(),
 		},
 	})
@@ -143,7 +143,7 @@ func (r *certManagerExternalCAADCSResource) Create(ctx context.Context, req reso
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating ADCS CA",
-			"Couldn't create ADCS CA in Infisical, unexpected error: "+err.Error(),
+			"Couldn't create ADCS CA in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -179,19 +179,19 @@ func (r *certManagerExternalCAADCSResource) Read(ctx context.Context, req resour
 		return
 	}
 
-	ca, err := r.client.GetADCSCA(infisical.GetCARequest{
+	ca, err := r.client.GetADCSCA(kmsclient.GetCARequest{
 		CAId: state.Id.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
 
 		resp.Diagnostics.AddError(
 			"Error reading ADCS CA",
-			"Couldn't read ADCS CA from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read ADCS CA from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -233,24 +233,24 @@ func (r *certManagerExternalCAADCSResource) Update(ctx context.Context, req reso
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading project",
-			"Couldn't read project from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read project from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
 
-	updatedCA, err := r.client.UpdateADCSCA(infisical.UpdateADCSCARequest{
+	updatedCA, err := r.client.UpdateADCSCA(kmsclient.UpdateADCSCARequest{
 		ProjectId: project.ID,
 		CAId:      plan.Id.ValueString(),
 		Name:      plan.Name.ValueString(),
 		Status:    plan.Status.ValueString(),
-		Configuration: infisical.CertificateAuthorityConfiguration{
+		Configuration: kmsclient.CertificateAuthorityConfiguration{
 			AzureAdcsConnectionId: plan.AzureAdcsConnectionId.ValueString(),
 		},
 	})
@@ -258,7 +258,7 @@ func (r *certManagerExternalCAADCSResource) Update(ctx context.Context, req reso
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating ADCS CA",
-			"Couldn't update ADCS CA in Infisical, unexpected error: "+err.Error(),
+			"Couldn't update ADCS CA in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -294,14 +294,14 @@ func (r *certManagerExternalCAADCSResource) Delete(ctx context.Context, req reso
 		return
 	}
 
-	_, err := r.client.DeleteADCSCA(infisical.DeleteCARequest{
+	_, err := r.client.DeleteADCSCA(kmsclient.DeleteCARequest{
 		CAId: state.Id.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting ADCS CA",
-			"Couldn't delete ADCS CA from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete ADCS CA from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}

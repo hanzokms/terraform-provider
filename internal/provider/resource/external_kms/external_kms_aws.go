@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -34,7 +34,7 @@ const AwsExternalKmsAssumeRoleType = "assume-role"
 
 func NewExternalKmsAwsResource() resource.Resource {
 	return &ExternalKmsBaseResource{
-		Provider:                infisical.ExternalKmsProviderAWS,
+		Provider:                kmsclient.ExternalKmsProviderAWS,
 		ExternalKmsProviderName: "AWS",
 		ResourceTypeName:        "_external_kms_aws",
 		ConfigurationAttributes: map[string]schema.Attribute{
@@ -44,7 +44,7 @@ func NewExternalKmsAwsResource() resource.Resource {
 			},
 			"aws_kms_key_id": schema.StringAttribute{
 				Required:    true,
-				Description: "The AWS KMS key ID to use for the external KMS. For more details, refer to the documentation here https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms#param-aws-kms-key-id",
+				Description: "The AWS KMS key ID to use for the external KMS. For more details, refer to the documentation here https://hanzo.ai/docs/documentation/platform/kms-configuration/aws-kms#param-aws-kms-key-id",
 			},
 			"type": schema.StringAttribute{
 				Required:    true,
@@ -56,22 +56,22 @@ func NewExternalKmsAwsResource() resource.Resource {
 				Attributes: map[string]schema.Attribute{
 					"access_key_id": schema.StringAttribute{
 						Optional:    true,
-						Description: "The AWS Access Key ID used to authenticate requests to AWS services. Required for access-key type. For more details, refer to the documentation here https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms#param-access-key-id",
+						Description: "The AWS Access Key ID used to authenticate requests to AWS services. Required for access-key type. For more details, refer to the documentation here https://hanzo.ai/docs/documentation/platform/kms-configuration/aws-kms#param-access-key-id",
 						Sensitive:   true,
 					},
 					"secret_access_key": schema.StringAttribute{
 						Optional:    true,
-						Description: "The AWS Secret Access Key associated with the Access Key ID to authenticate requests to AWS services. Required for access-key type. For more details, refer to the documentation here https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms#param-secret-access-key",
+						Description: "The AWS Secret Access Key associated with the Access Key ID to authenticate requests to AWS services. Required for access-key type. For more details, refer to the documentation here https://hanzo.ai/docs/documentation/platform/kms-configuration/aws-kms#param-secret-access-key",
 						Sensitive:   true,
 					},
 					"role_external_id": schema.StringAttribute{
 						Optional:    true,
-						Description: "The external ID of the role to assume for performing operations. Required for assume-role type. For more details, refer to the documentation here https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms#param-assume-role-external-id",
+						Description: "The external ID of the role to assume for performing operations. Required for assume-role type. For more details, refer to the documentation here https://hanzo.ai/docs/documentation/platform/kms-configuration/aws-kms#param-assume-role-external-id",
 						Sensitive:   true,
 					},
 					"role_arn": schema.StringAttribute{
 						Optional:    true,
-						Description: "The Amazon Resource Name (ARN) of the IAM role to assume for performing operations. Infisical will assume this role using AWS Security Token Service (STS). Required for assume-role type. For more details, refer to the documentation here https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms#param-iam-role-arn-for-role-assumption",
+						Description: "The Amazon Resource Name (ARN) of the IAM role to assume for performing operations. Kms will assume this role using AWS Security Token Service (STS). Required for assume-role type. For more details, refer to the documentation here https://hanzo.ai/docs/documentation/platform/kms-configuration/aws-kms#param-iam-role-arn-for-role-assumption",
 						Sensitive:   true,
 					},
 				},

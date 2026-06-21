@@ -15,37 +15,37 @@ fi
 if [ -d "$SOURCE_DIR/access_approval_policy_resource" ]; then
   echo "Replacing access_approval_policy_resource"
   cp -f "$SOURCE_DIR/access_approval_policy_resource/access_approval_policy_resource.go" "$DESTINATION_DIR/"
-  cp -f "$SOURCE_DIR/access_approval_policy_resource/resource.tf" "$EXAMPLES_DIR/infisical_access_approval_policy/"
+  cp -f "$SOURCE_DIR/access_approval_policy_resource/resource.tf" "$EXAMPLES_DIR/kms_access_approval_policy/"
 fi
 
 if [ -d "$SOURCE_DIR/project_identity_resource" ]; then
   echo "Replacing project_identity_resource"
   cp -f "$SOURCE_DIR/project_identity_resource/project_identity_resource.go" "$DESTINATION_DIR/"
-  cp -f "$SOURCE_DIR/project_identity_resource/resource.tf" "$EXAMPLES_DIR/infisical_project_identity/"
+  cp -f "$SOURCE_DIR/project_identity_resource/resource.tf" "$EXAMPLES_DIR/kms_project_identity/"
 fi
 
 if [ -d "$SOURCE_DIR/project_user_resource" ]; then
   echo "Replacing project_user_resource"
   cp -f "$SOURCE_DIR/project_user_resource/project_user_resource.go" "$DESTINATION_DIR/"
-  cp -f "$SOURCE_DIR/project_user_resource/resource.tf" "$EXAMPLES_DIR/infisical_project_user/"
+  cp -f "$SOURCE_DIR/project_user_resource/resource.tf" "$EXAMPLES_DIR/kms_project_user/"
 fi
 
 if [ -d "$SOURCE_DIR/project_group_resource" ]; then
   echo "Replacing project_group_resource"
   cp -f "$SOURCE_DIR/project_group_resource/project_group.go" "$DESTINATION_DIR/"
-  cp -f "$SOURCE_DIR/project_group_resource/resource.tf" "$EXAMPLES_DIR/infisical_project_group/"
+  cp -f "$SOURCE_DIR/project_group_resource/resource.tf" "$EXAMPLES_DIR/kms_project_group/"
 fi
 
 if [ -d "$SOURCE_DIR/project_role_resource" ]; then
   echo "Replacing project_role_resource"
   cp -f "$SOURCE_DIR/project_role_resource/project_role_resource.go" "$DESTINATION_DIR/"
-  cp -f "$SOURCE_DIR/project_role_resource/resource.tf" "$EXAMPLES_DIR/infisical_project_role/"
+  cp -f "$SOURCE_DIR/project_role_resource/resource.tf" "$EXAMPLES_DIR/kms_project_role/"
 fi
 
 if [ -d "$SOURCE_DIR/project_template_resource" ]; then
   echo "Replacing project_template_resource"
   cp -f "$SOURCE_DIR/project_template_resource/project_template_resource.go" "$DESTINATION_DIR/"
-  cp -f "$SOURCE_DIR/project_template_resource/resource.tf" "$EXAMPLES_DIR/infisical_project_template/"
+  cp -f "$SOURCE_DIR/project_template_resource/resource.tf" "$EXAMPLES_DIR/kms_project_template/"
 fi
 
 
@@ -66,7 +66,7 @@ for item in "$DESTINATION_DIR/secret_sync"/* "$SOURCE_DIR/secret_sync"/*/; do
     
     if [ -f "$item/resource.tf" ]; then
       echo "Copying resource.tf for $folder_name"
-      cp -f "$item/resource.tf" "$EXAMPLES_DIR/infisical_${folder_name}/"
+      cp -f "$item/resource.tf" "$EXAMPLES_DIR/kms_${folder_name}/"
     fi
   fi
 done

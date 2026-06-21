@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -26,34 +26,34 @@ const AzureDevOpsAppConnectionClientSecretsMethod = "client-secret"
 
 func NewAppConnectionAzureDevOpsResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppAzureDevOps,
+		App:               kmsclient.AppConnectionAppAzureDevOps,
 		AppConnectionName: "Azure DevOps",
 		ResourceTypeName:  "_app_connection_azure_devops",
 		AllowedMethods:    []string{AzureDevOpsAppConnectionAccessTokenMethod, AzureDevOpsAppConnectionClientSecretsMethod},
 		CredentialsAttributes: map[string]schema.Attribute{
 			"organization_name": schema.StringAttribute{
 				Required:    true,
-				Description: "The name of the Azure DevOps organization. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-devops",
+				Description: "The name of the Azure DevOps organization. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-devops",
 				Sensitive:   false,
 			},
 			"access_token": schema.StringAttribute{
 				Optional:    true,
-				Description: "The Azure DevOps access token. Required for access-token method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-devops",
+				Description: "The Azure DevOps access token. Required for access-token method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-devops",
 				Sensitive:   true,
 			},
 			"tenant_id": schema.StringAttribute{
 				Optional:    true,
-				Description: "The Azure Active Directory (AAD) tenant ID. Required for client-secret method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-client-secrets",
+				Description: "The Azure Active Directory (AAD) tenant ID. Required for client-secret method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-client-secrets",
 				Sensitive:   false,
 			},
 			"client_id": schema.StringAttribute{
 				Optional:    true,
-				Description: "The Azure application (client) ID. Required for client-secret method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-client-secrets",
+				Description: "The Azure application (client) ID. Required for client-secret method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-client-secrets",
 				Sensitive:   true,
 			},
 			"client_secret": schema.StringAttribute{
 				Optional:    true,
-				Description: "The Azure client secret. Required for client-secret method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-client-secrets",
+				Description: "The Azure client secret. Required for client-secret method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-client-secrets",
 				Sensitive:   true,
 			},
 		},

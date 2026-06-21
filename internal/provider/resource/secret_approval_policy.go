@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -22,7 +22,7 @@ func NewSecretApprovalPolicyResource() resource.Resource {
 
 // secretApprovalPolicyResource is the resource implementation.
 type secretApprovalPolicyResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type SecretApprover struct {
@@ -129,7 +129,7 @@ func (r *secretApprovalPolicyResource) Configure(_ context.Context, req resource
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -161,7 +161,7 @@ func (r *secretApprovalPolicyResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	var approvers []infisical.CreateSecretApprovalPolicyApprover
+	var approvers []kmsclient.CreateSecretApprovalPolicyApprover
 	for _, el := range plan.Approvers {
 		if el.Type.ValueString() == "user" {
 			if el.Name.IsNull() {
@@ -197,7 +197,7 @@ func (r *secretApprovalPolicyResource) Create(ctx context.Context, req resource.
 			}
 		}
 
-		approvers = append(approvers, infisical.CreateSecretApprovalPolicyApprover{
+		approvers = append(approvers, kmsclient.CreateSecretApprovalPolicyApprover{
 			ID:   el.ID.ValueString(),
 			Name: el.Name.ValueString(),
 			Type: el.Type.ValueString(),
@@ -206,7 +206,7 @@ func (r *secretApprovalPolicyResource) Create(ctx context.Context, req resource.
 
 	var environments []string
 	if !plan.EnvironmentSlugs.IsNull() {
-		environments = infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.EnvironmentSlugs)
+		environments = kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.EnvironmentSlugs)
 	} else {
 		environments = []string{plan.EnvironmentSlug.ValueString()}
 	}
@@ -215,7 +215,7 @@ func (r *secretApprovalPolicyResource) Create(ctx context.Context, req resource.
 		environment = environments[0]
 	}
 
-	secretApprovalPolicy, err := r.client.CreateSecretApprovalPolicy(infisical.CreateSecretApprovalPolicyRequest{
+	secretApprovalPolicy, err := r.client.CreateSecretApprovalPolicy(kmsclient.CreateSecretApprovalPolicyRequest{
 		Name:                 plan.Name.ValueString(),
 		ProjectID:            plan.ProjectID.ValueString(),
 		Environments:         environments,
@@ -263,12 +263,12 @@ func (r *secretApprovalPolicyResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	secretApprovalPolicy, err := r.client.GetSecretApprovalPolicyByID(infisical.GetSecretApprovalPolicyByIDRequest{
+	secretApprovalPolicy, err := r.client.GetSecretApprovalPolicyByID(kmsclient.GetSecretApprovalPolicyByIDRequest{
 		ID: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -363,7 +363,7 @@ func (r *secretApprovalPolicyResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	if state.EnvironmentSlug != plan.EnvironmentSlug && infisicaltf.IsAttrValueEmpty(plan.EnvironmentSlugs) {
+	if state.EnvironmentSlug != plan.EnvironmentSlug && kmstf.IsAttrValueEmpty(plan.EnvironmentSlugs) {
 		resp.Diagnostics.AddError(
 			"Unable to update secret approval policy",
 			fmt.Sprintf("Cannot change environment, previous environment: %s, new environment: %s", state.EnvironmentSlug, plan.EnvironmentSlug),
@@ -371,7 +371,7 @@ func (r *secretApprovalPolicyResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	var approvers []infisical.UpdateSecretApprovalPolicyApprover
+	var approvers []kmsclient.UpdateSecretApprovalPolicyApprover
 	for _, el := range plan.Approvers {
 		if el.Type.ValueString() == "user" {
 			if el.Name.IsNull() {
@@ -407,7 +407,7 @@ func (r *secretApprovalPolicyResource) Update(ctx context.Context, req resource.
 			}
 		}
 
-		approvers = append(approvers, infisical.UpdateSecretApprovalPolicyApprover{
+		approvers = append(approvers, kmsclient.UpdateSecretApprovalPolicyApprover{
 			ID:   el.ID.ValueString(),
 			Name: el.Name.ValueString(),
 			Type: el.Type.ValueString(),
@@ -416,11 +416,11 @@ func (r *secretApprovalPolicyResource) Update(ctx context.Context, req resource.
 
 	var environments []string
 	if !plan.EnvironmentSlugs.IsNull() {
-		environments = infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.EnvironmentSlugs)
+		environments = kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.EnvironmentSlugs)
 	} else {
 		environments = []string{plan.EnvironmentSlug.ValueString()}
 	}
-	_, err := r.client.UpdateSecretApprovalPolicy(infisical.UpdateSecretApprovalPolicyRequest{
+	_, err := r.client.UpdateSecretApprovalPolicy(kmsclient.UpdateSecretApprovalPolicyRequest{
 		ID:                   plan.ID.ValueString(),
 		Name:                 plan.Name.ValueString(),
 		SecretPath:           plan.SecretPath.ValueString(),
@@ -463,7 +463,7 @@ func (r *secretApprovalPolicyResource) Delete(ctx context.Context, req resource.
 		return
 	}
 
-	_, err := r.client.DeleteSecretApprovalPolicy(infisical.DeleteSecretApprovalPolicyRequest{
+	_, err := r.client.DeleteSecretApprovalPolicy(kmsclient.DeleteSecretApprovalPolicyRequest{
 		ID: state.ID.ValueString(),
 	})
 

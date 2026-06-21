@@ -1,14 +1,14 @@
 terraform {
   required_providers {
-    infisical = {
+    kms = {
       # version = <latest version>
-      source = "infisical/infisical"
+      source = "hanzokms/kms"
     }
   }
 }
 
-provider "infisical" {
-  host = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+provider "kms" {
+  host = "https://kms.hanzo.ai" # Only required if using self hosted instance of Hanzo KMS, default is https://kms.hanzo.ai
   auth = {
     universal = {
       client_id     = "<machine-identity-client-id>"
@@ -18,7 +18,7 @@ provider "infisical" {
 }
 
 # Example 1: Sync secrets to a GitLab project
-resource "infisical_secret_sync_gitlab" "gitlab-project-sync" {
+resource "kms_secret_sync_gitlab" "gitlab-project-sync" {
   name          = "gitlab-project-sync-demo"
   description   = "Demo of GitLab project secret sync"
   project_id    = "<project-id>"
@@ -26,13 +26,13 @@ resource "infisical_secret_sync_gitlab" "gitlab-project-sync" {
   secret_path   = "/" # Root folder is /
   connection_id = "<gitlab-app-connection-id>"
 
-  sync_options = "{\"initial_sync_behavior\":\"overwrite-destination\",\"disable_secret_deletion\":false,\"key_schema\":\"INFISICAL_{{secretKey}}\"}"
+  sync_options = "{\"initial_sync_behavior\":\"overwrite-destination\",\"disable_secret_deletion\":false,\"key_schema\":\"KMS_{{secretKey}}\"}"
 
   destination_config = "{\"scope\":\"project\",\"project_id\":\"<gitlab-project-id>\",\"project_name\":\"<gitlab-project-name>\",\"target_environment\":\"*\",\"should_protect_secrets\":false,\"should_mask_secrets\":true,\"should_hide_secrets\":false}"
 }
 
 # Example 2: Sync secrets to a GitLab group
-resource "infisical_secret_sync_gitlab" "gitlab-group-sync" {
+resource "kms_secret_sync_gitlab" "gitlab-group-sync" {
   name          = "gitlab-group-sync-demo"
   description   = "Demo of GitLab group secret sync"
   project_id    = "<project-id>"

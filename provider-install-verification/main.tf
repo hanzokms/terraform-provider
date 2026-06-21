@@ -1,19 +1,19 @@
 terraform {
   required_providers {
-    infisical = {
-      source = "infisical/infisical"
+    kms = {
+      source = "hanzokms/kms"
     }
   }
 }
 
-provider "infisical" {
-  host          = "https://app.infisical.com"
+provider "kms" {
+  host          = "https://kms.hanzo.ai"
   service_token = "<>"
 }
 
-data "infisical_secrets" "edu" {}
+data "kms_secrets" "edu" {}
 
 output "secrets" {
-  value     = data.infisical_secrets.edu.secrets.maidul
+  value     = data.kms_secrets.edu.secrets.maidul
   sensitive = false
 }

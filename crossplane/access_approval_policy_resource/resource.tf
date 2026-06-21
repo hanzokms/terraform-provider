@@ -1,14 +1,14 @@
 terraform {
   required_providers {
-    infisical = {
+    kms = {
       # version = <latest version>
-      source = "infisical/infisical"
+      source = "hanzokms/kms"
     }
   }
 }
 
-provider "infisical" {
-  host = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+provider "kms" {
+  host = "https://kms.hanzo.ai" # Only required if using self hosted instance of Hanzo KMS, default is https://kms.hanzo.ai
   auth = {
     universal_auth = {
       client_id     = "<machine-identity-client-id>"
@@ -18,7 +18,7 @@ provider "infisical" {
 }
 
 
-resource "infisical_access_approval_policy" "prod-policy" {
+resource "kms_access_approval_policy" "prod-policy" {
   project_id        = "5156a345-e460-416b-84fc-b14b426b1cb3"
   name              = "my-approval-policy"
   environment_slugs = ["prod"]
@@ -30,7 +30,7 @@ resource "infisical_access_approval_policy" "prod-policy" {
   ]
   user_approvers = [
     // array of usernames
-    "vlad@infisical.com",
+    "vlad@hanzo.ai",
   ]
 
   required_approvals = 1

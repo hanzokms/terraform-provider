@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -24,7 +24,7 @@ type DynamicSecretMongoDbConfigurationModel struct {
 
 func NewDynamicSecretMongoDbResource() resource.Resource {
 	return &DynamicSecretBaseResource{
-		Provider:          infisical.DynamicSecretProviderMongoDb,
+		Provider:          kmsclient.DynamicSecretProviderMongoDb,
 		ResourceTypeName:  "_dynamic_secret_mongo_db",
 		DynamicSecretName: "MongoDB",
 		ConfigurationAttributes: map[string]schema.Attribute{
@@ -86,7 +86,7 @@ func NewDynamicSecretMongoDbResource() resource.Resource {
 			return configurationMap, diags
 		},
 
-		ReadConfigurationFromApi: func(ctx context.Context, dynamicSecret infisical.DynamicSecret, configState types.Object) (types.Object, diag.Diagnostics) {
+		ReadConfigurationFromApi: func(ctx context.Context, dynamicSecret kmsclient.DynamicSecret, configState types.Object) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			hostVal, ok := dynamicSecret.Inputs["host"].(string)

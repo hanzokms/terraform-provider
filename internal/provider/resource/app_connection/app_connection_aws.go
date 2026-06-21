@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -24,24 +24,24 @@ const AwsAppConnectionAccessKeyMethod = "access-key"
 
 func NewAppConnectionAwsResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppAWS,
+		App:               kmsclient.AppConnectionAppAWS,
 		AppConnectionName: "AWS",
 		ResourceTypeName:  "_app_connection_aws",
 		AllowedMethods:    []string{AwsAppConnectionAssumeRoleMethod, AwsAppConnectionAccessKeyMethod},
 		CredentialsAttributes: map[string]schema.Attribute{
 			"role_arn": schema.StringAttribute{
 				Optional:    true,
-				Description: "The Amazon Resource Name (ARN) of the IAM role to assume for performing operations. Infisical will assume this role using AWS Security Token Service (STS). Required for assume-role access method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/aws#assume-role-recommended",
+				Description: "The Amazon Resource Name (ARN) of the IAM role to assume for performing operations. Kms will assume this role using AWS Security Token Service (STS). Required for assume-role access method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/aws#assume-role-recommended",
 				Sensitive:   true,
 			},
 			"access_key_id": schema.StringAttribute{
 				Optional:    true,
-				Description: "The AWS Access Key ID used to authenticate requests to AWS services. Required for access-key access method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/aws#access-key",
+				Description: "The AWS Access Key ID used to authenticate requests to AWS services. Required for access-key access method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/aws#access-key",
 				Sensitive:   true,
 			},
 			"secret_access_key": schema.StringAttribute{
 				Optional:    true,
-				Description: "The AWS Secret Access Key associated with the Access Key ID to authenticate requests to AWS services. Required for access-key access method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/aws#access-key",
+				Description: "The AWS Secret Access Key associated with the Access Key ID to authenticate requests to AWS services. Required for access-key access method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/aws#access-key",
 				Sensitive:   true,
 			},
 		},

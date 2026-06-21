@@ -3,11 +3,11 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmsstrings "github.com/hanzokms/terraform-provider/internal/pkg/strings"
+	"github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"strconv"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	infisicalstrings "terraform-provider-infisical/internal/pkg/strings"
-	"terraform-provider-infisical/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -26,7 +26,7 @@ func NewIdentityGcpAuthResource() resource.Resource {
 
 // IdentityGcpAuthResource is the resource implementation.
 type IdentityGcpAuthResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityGcpAuthResourceSourceModel describes the data source data model.
@@ -55,7 +55,7 @@ func (r *IdentityGcpAuthResource) Metadata(_ context.Context, req resource.Metad
 // Schema defines the schema for the resource.
 func (r *IdentityGcpAuthResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity gcp auth in Infisical.",
+		Description: "Create and manage identity gcp auth in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the gcp auth",
@@ -75,20 +75,20 @@ func (r *IdentityGcpAuthResource) Schema(_ context.Context, _ resource.SchemaReq
 			},
 			"allowed_service_account_emails": schema.ListAttribute{
 				ElementType:         types.StringType,
-				Description:         "List of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Infisical",
-				MarkdownDescription: "List of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Infisical; this could be something like `test@project.iam.gserviceaccount.com`, `12345-compute@developer.gserviceaccount.com`, etc.",
+				Description:         "List of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Kms",
+				MarkdownDescription: "List of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Kms; this could be something like `test@project.iam.gserviceaccount.com`, `12345-compute@developer.gserviceaccount.com`, etc.",
 				Optional:            true,
 				Computed:            true,
 			},
 			"allowed_projects": schema.ListAttribute{
 				ElementType: types.StringType,
-				Description: "List of trusted GCP projects that the GCE instance must belong to authenticate with Infisical. Note that this validation property will only work for GCE instances",
+				Description: "List of trusted GCP projects that the GCE instance must belong to authenticate with Kms. Note that this validation property will only work for GCE instances",
 				Optional:    true,
 				Computed:    true,
 			},
 			"allowed_zones": schema.ListAttribute{
 				ElementType: types.StringType,
-				Description: "List of trusted zones that the GCE instances must belong to authenticate with Infisical; this should be the fully-qualified zone name in the format `<region>-<zone>`like `us-central1-a`, `us-west1-b`, etc. Note that this validation property will only work for GCE instances.",
+				Description: "List of trusted zones that the GCE instances must belong to authenticate with Kms; this should be the fully-qualified zone name in the format `<region>-<zone>`like `us-central1-a`, `us-west1-b`, etc. Note that this validation property will only work for GCE instances.",
 				Optional:    true,
 				Computed:    true,
 			},
@@ -130,7 +130,7 @@ func (r *IdentityGcpAuthResource) Configure(_ context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -144,7 +144,7 @@ func (r *IdentityGcpAuthResource) Configure(_ context.Context, req resource.Conf
 	r.client = client
 }
 
-func updateGcpAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityGcpAuthResourceModel, newIdentityGcpAuth *infisical.IdentityGcpAuth) {
+func updateGcpAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityGcpAuthResourceModel, newIdentityGcpAuth *kmsclient.IdentityGcpAuth) {
 	plan.AccessTokenMaxTTL = types.Int64Value(newIdentityGcpAuth.AccessTokenMaxTTL)
 	plan.AccessTokenTTL = types.Int64Value(newIdentityGcpAuth.AccessTokenTTL)
 	plan.AccessTokenNumUsesLimit = types.Int64Value(newIdentityGcpAuth.AccessTokenNumUsesLimit)
@@ -172,19 +172,19 @@ func updateGcpAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, pla
 		return
 	}
 
-	plan.AllowedServiceAccountEmails, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityGcpAuth.AllowedServiceAccounts, ","))
+	plan.AllowedServiceAccountEmails, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityGcpAuth.AllowedServiceAccounts, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
 	}
 
-	plan.AllowedProjects, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityGcpAuth.AllowedProjects, ","))
+	plan.AllowedProjects, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityGcpAuth.AllowedProjects, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
 	}
 
-	plan.AllowedZones, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityGcpAuth.AllowedZones, ","))
+	plan.AllowedZones, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityGcpAuth.AllowedZones, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
@@ -216,7 +216,7 @@ func (r *IdentityGcpAuthResource) Create(ctx context.Context, req resource.Creat
 	allowedZones := terraform.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedZones)
 	allowedServiceAccounts := terraform.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServiceAccountEmails)
 
-	newIdentityGcpAuth, err := r.client.CreateIdentityGcpAuth(infisical.CreateIdentityGcpAuthRequest{
+	newIdentityGcpAuth, err := r.client.CreateIdentityGcpAuth(kmsclient.CreateIdentityGcpAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTTL:          plan.AccessTokenTTL.ValueInt64(),
 		AccessTokenMaxTTL:       plan.AccessTokenMaxTTL.ValueInt64(),
@@ -265,12 +265,12 @@ func (r *IdentityGcpAuthResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	// Get the latest data from the API
-	identityGcpAuth, err := r.client.GetIdentityGcpAuth(infisical.GetIdentityGcpAuthRequest{
+	identityGcpAuth, err := r.client.GetIdentityGcpAuth(kmsclient.GetIdentityGcpAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -319,7 +319,7 @@ func (r *IdentityGcpAuthResource) Update(ctx context.Context, req resource.Updat
 	allowedProjects := terraform.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedProjects)
 	allowedZones := terraform.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedZones)
 	allowedServiceAccounts := terraform.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServiceAccountEmails)
-	updatedIdentityGcpAuth, err := r.client.UpdateIdentityGcpAuth(infisical.UpdateIdentityGcpAuthRequest{
+	updatedIdentityGcpAuth, err := r.client.UpdateIdentityGcpAuth(kmsclient.UpdateIdentityGcpAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTTL:          plan.AccessTokenTTL.ValueInt64(),
 		AccessTokenMaxTTL:       plan.AccessTokenMaxTTL.ValueInt64(),
@@ -366,7 +366,7 @@ func (r *IdentityGcpAuthResource) Delete(ctx context.Context, req resource.Delet
 		return
 	}
 
-	_, err := r.client.RevokeIdentityGcpAuth(infisical.RevokeIdentityGcpAuthRequest{
+	_, err := r.client.RevokeIdentityGcpAuth(kmsclient.RevokeIdentityGcpAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -21,7 +21,7 @@ func NewSecretFolderDataSource() datasource.DataSource {
 
 // SecretDataSource defines the data source implementation.
 type SecretFoldersDataSource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // ExampleDataSourceModel describes the data source data model.
@@ -32,7 +32,7 @@ type SecretFolderDataSourceModel struct {
 	Folders         types.List   `tfsdk:"folders"`
 }
 
-type InfisicalSecretFolderDetails struct {
+type KmsSecretFolderDetails struct {
 	ID   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
 }
@@ -43,7 +43,7 @@ func (d *SecretFoldersDataSource) Metadata(ctx context.Context, req datasource.M
 
 func (d *SecretFoldersDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Interact with Infisical secret folders.",
+		Description: "Interact with Kms secret folders.",
 		Attributes: map[string]schema.Attribute{
 			"project_id": schema.StringAttribute{
 				Description: "The ID of the project where the folder resides",
@@ -85,7 +85,7 @@ func (d *SecretFoldersDataSource) Configure(ctx context.Context, req datasource.
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -103,7 +103,7 @@ func (d *SecretFoldersDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	if !d.client.Config.IsMachineIdentityAuth {
 		resp.Diagnostics.AddError(
-			"Unable to create infisical secrets folder",
+			"Unable to create kms secrets folder",
 			"Only Machine Identity authentication is supported for this operation",
 		)
 		return
@@ -118,7 +118,7 @@ func (d *SecretFoldersDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	secretFolder, err := d.client.GetSecretFolderList(infisical.ListSecretFolderRequest{
+	secretFolder, err := d.client.GetSecretFolderList(kmsclient.ListSecretFolderRequest{
 		ProjectID:   data.ProjectID.ValueString(),
 		Environment: data.EnvironmentSlug.ValueString(),
 		SecretPath:  data.SecretPath.ValueString(),
@@ -126,14 +126,14 @@ func (d *SecretFoldersDataSource) Read(ctx context.Context, req datasource.ReadR
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Something went wrong while fetching the secret folders",
-			"If the error is not clear, please get in touch at infisical.com/slack\n\n"+
-				"Infisical Client Error: "+err.Error(),
+			"If the error is not clear, please get in touch at hanzo.ai/slack\n\n"+
+				"Kms Client Error: "+err.Error(),
 		)
 	}
 
-	planFolders := make([]InfisicalSecretFolderDetails, len(secretFolder.Folders))
+	planFolders := make([]KmsSecretFolderDetails, len(secretFolder.Folders))
 	for i, el := range secretFolder.Folders {
-		planFolders[i] = InfisicalSecretFolderDetails{
+		planFolders[i] = KmsSecretFolderDetails{
 			ID:   types.StringValue(el.ID),
 			Name: types.StringValue(el.Name),
 		}

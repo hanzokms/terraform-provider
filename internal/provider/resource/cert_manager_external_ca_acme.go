@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -29,7 +29,7 @@ func NewCertManagerExternalCAACMEResource() resource.Resource {
 }
 
 type certManagerExternalCAACMEResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type certManagerExternalCAACMEResourceModel struct {
@@ -52,7 +52,7 @@ func (r *certManagerExternalCAACMEResource) Metadata(_ context.Context, req reso
 
 func (r *certManagerExternalCAACMEResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage external ACME certificate authorities in Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create and manage external ACME certificate authorities in Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"project_slug": schema.StringAttribute{
 				Description: "The slug of the cert-manager project",
@@ -122,7 +122,7 @@ func (r *certManagerExternalCAACMEResource) Configure(_ context.Context, req res
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -152,14 +152,14 @@ func (r *certManagerExternalCAACMEResource) Create(ctx context.Context, req reso
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading project",
-			"Couldn't read project from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read project from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -175,7 +175,7 @@ func (r *certManagerExternalCAACMEResource) Create(ctx context.Context, req reso
 		dnsProviderConfig["hostedZoneId"] = plan.DNSHostedZoneId.ValueString()
 	}
 
-	configuration := infisical.CertificateAuthorityConfiguration{
+	configuration := kmsclient.CertificateAuthorityConfiguration{
 		DNSAppConnectionId: plan.DNSAppConnectionId.ValueString(),
 		DNSProviderConfig:  dnsProviderConfig,
 		DirectoryUrl:       plan.DirectoryUrl.ValueString(),
@@ -190,7 +190,7 @@ func (r *certManagerExternalCAACMEResource) Create(ctx context.Context, req reso
 		configuration.EABHmacKey = plan.EABHmacKey.ValueString()
 	}
 
-	newCA, err := r.client.CreateACMECA(infisical.CreateACMECARequest{
+	newCA, err := r.client.CreateACMECA(kmsclient.CreateACMECARequest{
 		ProjectId:     project.ID,
 		Name:          plan.Name.ValueString(),
 		Status:        status,
@@ -200,7 +200,7 @@ func (r *certManagerExternalCAACMEResource) Create(ctx context.Context, req reso
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating ACME CA",
-			"Couldn't create ACME CA in Infisical, unexpected error: "+err.Error(),
+			"Couldn't create ACME CA in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -241,19 +241,19 @@ func (r *certManagerExternalCAACMEResource) Read(ctx context.Context, req resour
 		return
 	}
 
-	ca, err := r.client.GetACMECA(infisical.GetCARequest{
+	ca, err := r.client.GetACMECA(kmsclient.GetCARequest{
 		CAId: state.Id.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
 
 		resp.Diagnostics.AddError(
 			"Error reading ACME CA",
-			"Couldn't read ACME CA from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read ACME CA from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -314,14 +314,14 @@ func (r *certManagerExternalCAACMEResource) Update(ctx context.Context, req reso
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading project",
-			"Couldn't read project from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read project from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -332,7 +332,7 @@ func (r *certManagerExternalCAACMEResource) Update(ctx context.Context, req reso
 		dnsProviderConfig["hostedZoneId"] = plan.DNSHostedZoneId.ValueString()
 	}
 
-	configuration := infisical.CertificateAuthorityConfiguration{
+	configuration := kmsclient.CertificateAuthorityConfiguration{
 		DNSAppConnectionId: plan.DNSAppConnectionId.ValueString(),
 		DNSProviderConfig:  dnsProviderConfig,
 		DirectoryUrl:       plan.DirectoryUrl.ValueString(),
@@ -347,7 +347,7 @@ func (r *certManagerExternalCAACMEResource) Update(ctx context.Context, req reso
 		configuration.EABHmacKey = plan.EABHmacKey.ValueString()
 	}
 
-	_, err = r.client.UpdateACMECA(infisical.UpdateACMECARequest{
+	_, err = r.client.UpdateACMECA(kmsclient.UpdateACMECARequest{
 		ProjectId:     project.ID,
 		CAId:          plan.Id.ValueString(),
 		Name:          plan.Name.ValueString(),
@@ -358,7 +358,7 @@ func (r *certManagerExternalCAACMEResource) Update(ctx context.Context, req reso
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating ACME CA",
-			"Couldn't update ACME CA in Infisical, unexpected error: "+err.Error(),
+			"Couldn't update ACME CA in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -386,14 +386,14 @@ func (r *certManagerExternalCAACMEResource) Delete(ctx context.Context, req reso
 		return
 	}
 
-	_, err := r.client.DeleteACMECA(infisical.DeleteCARequest{
+	_, err := r.client.DeleteACMECA(kmsclient.DeleteCARequest{
 		CAId: state.Id.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting ACME CA",
-			"Couldn't delete ACME CA from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete ACME CA from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}

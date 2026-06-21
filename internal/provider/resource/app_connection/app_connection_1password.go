@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -22,19 +22,19 @@ const AppConnection1PasswordAuthMethodApiToken = "api-token"
 
 func NewAppConnection1PasswordResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionApp1Password,
+		App:               kmsclient.AppConnectionApp1Password,
 		AppConnectionName: "1Password",
 		ResourceTypeName:  "_app_connection_1password",
 		AllowedMethods:    []string{AppConnection1PasswordAuthMethodApiToken},
 		CredentialsAttributes: map[string]schema.Attribute{
 			"instance_url": schema.StringAttribute{
 				Required:    true,
-				Description: "The URL of the 1Password Connect instance to connect to. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/1password",
+				Description: "The URL of the 1Password Connect instance to connect to. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/1password",
 				Sensitive:   true,
 			},
 			"api_token": schema.StringAttribute{
 				Required:    true,
-				Description: "The API token to use for authentication. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/1password",
+				Description: "The API token to use for authentication. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/1password",
 				Sensitive:   true,
 			},
 		},

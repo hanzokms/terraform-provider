@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -25,23 +25,23 @@ type RotateAtUtc struct {
 
 // SecretRotationBaseResource is the resource implementation.
 type SecretRotationBaseResource struct {
-	Provider           infisical.SecretRotationProvider
+	Provider           kmsclient.SecretRotationProvider
 	ResourceTypeName   string // terraform resource name suffix
 	SecretRotationName string // complete descriptive name of the secret rotation
-	AppConnection      infisical.AppConnectionApp
-	client             *infisical.Client
+	AppConnection      kmsclient.AppConnectionApp
+	client             *kmsclient.Client
 
 	ParametersAttributes   map[string]schema.Attribute
 	ReadParametersFromPlan func(ctx context.Context, plan SecretRotationBaseResourceModel) (map[string]interface{}, diag.Diagnostics)
-	ReadParametersFromApi  func(ctx context.Context, secretRotation infisical.SecretRotation) (types.Object, diag.Diagnostics)
+	ReadParametersFromApi  func(ctx context.Context, secretRotation kmsclient.SecretRotation) (types.Object, diag.Diagnostics)
 
 	SecretsMappingAttributes   map[string]schema.Attribute
 	ReadSecretsMappingFromPlan func(ctx context.Context, plan SecretRotationBaseResourceModel) (map[string]interface{}, diag.Diagnostics)
-	ReadSecretsMappingFromApi  func(ctx context.Context, secretRotation infisical.SecretRotation) (types.Object, diag.Diagnostics)
+	ReadSecretsMappingFromApi  func(ctx context.Context, secretRotation kmsclient.SecretRotation) (types.Object, diag.Diagnostics)
 
 	TemporaryParametersAttributes   map[string]schema.Attribute
 	ReadTemporaryParametersFromPlan func(ctx context.Context, plan SecretRotationBaseResourceModel) (map[string]interface{}, diag.Diagnostics)
-	ReadTemporaryParametersFromApi  func(ctx context.Context, secretRotation infisical.SecretRotation) (types.Object, diag.Diagnostics)
+	ReadTemporaryParametersFromApi  func(ctx context.Context, secretRotation kmsclient.SecretRotation) (types.Object, diag.Diagnostics)
 }
 
 type SecretRotationBaseResourceModel struct {
@@ -92,7 +92,7 @@ func (r *SecretRotationBaseResource) Schema(_ context.Context, _ resource.Schema
 			},
 			"project_id": schema.StringAttribute{
 				Required:      true,
-				Description:   "The ID of the Infisical project to create the secret rotation in.",
+				Description:   "The ID of the Kms project to create the secret rotation in.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"connection_id": schema.StringAttribute{
@@ -169,7 +169,7 @@ func (r *SecretRotationBaseResource) Configure(_ context.Context, req resource.C
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -228,7 +228,7 @@ func (r *SecretRotationBaseResource) Create(ctx context.Context, req resource.Cr
 		temporaryParameters = nil
 	}
 
-	secretRotation, err := r.client.CreateSecretRotation(infisical.CreateSecretRotationRequest{
+	secretRotation, err := r.client.CreateSecretRotation(kmsclient.CreateSecretRotationRequest{
 		Provider:            r.Provider,
 		Name:                plan.Name.ValueString(),
 		Description:         plan.Description.ValueString(),
@@ -239,7 +239,7 @@ func (r *SecretRotationBaseResource) Create(ctx context.Context, req resource.Cr
 		SecretPath:          plan.SecretPath.ValueString(),
 
 		RotationInterval: plan.RotationInterval.ValueInt32(),
-		RotateAtUtc: infisical.SecretRotationRotateAtUtc{
+		RotateAtUtc: kmsclient.SecretRotationRotateAtUtc{
 			Hours:   plan.RotateAtUtc.Hours.ValueInt64(),
 			Minutes: plan.RotateAtUtc.Minutes.ValueInt64(),
 		},
@@ -284,13 +284,13 @@ func (r *SecretRotationBaseResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
-	secretRotation, err := r.client.GetSecretRotationById(infisical.GetSecretRotationByIdRequest{
+	secretRotation, err := r.client.GetSecretRotationById(kmsclient.GetSecretRotationByIdRequest{
 		Provider: r.Provider,
 		ID:       state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -400,7 +400,7 @@ func (r *SecretRotationBaseResource) Update(ctx context.Context, req resource.Up
 		temporaryParameters = nil
 	}
 
-	_, err := r.client.UpdateSecretRotation(infisical.UpdateSecretRotationRequest{
+	_, err := r.client.UpdateSecretRotation(kmsclient.UpdateSecretRotationRequest{
 		Provider:            r.Provider,
 		ID:                  state.ID.ValueString(),
 		Name:                plan.Name.ValueString(),
@@ -411,7 +411,7 @@ func (r *SecretRotationBaseResource) Update(ctx context.Context, req resource.Up
 		SecretPath:          plan.SecretPath.ValueString(),
 
 		RotationInterval: plan.RotationInterval.ValueInt32(),
-		RotateAtUtc: infisical.SecretRotationRotateAtUtc{
+		RotateAtUtc: kmsclient.SecretRotationRotateAtUtc{
 			Hours:   plan.RotateAtUtc.Hours.ValueInt64(),
 			Minutes: plan.RotateAtUtc.Minutes.ValueInt64(),
 		},
@@ -452,7 +452,7 @@ func (r *SecretRotationBaseResource) Delete(ctx context.Context, req resource.De
 		return
 	}
 
-	_, err := r.client.DeleteSecretRotation(infisical.DeleteSecretRotationRequest{
+	_, err := r.client.DeleteSecretRotation(kmsclient.DeleteSecretRotationRequest{
 		Provider: r.Provider,
 		ID:       state.ID.ValueString(),
 	})
@@ -460,7 +460,7 @@ func (r *SecretRotationBaseResource) Delete(ctx context.Context, req resource.De
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting secret rotation",
-			"Couldn't delete secret rotation from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete secret rotation from Kms, unexpected error: "+err.Error(),
 		)
 	}
 }

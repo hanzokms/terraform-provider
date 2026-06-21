@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -24,10 +24,10 @@ type SecretRotationPostgresCredentialsSecretsMappingModel struct {
 
 func NewSecretRotationPostgresCredentialsResource() resource.Resource {
 	return &SecretRotationBaseResource{
-		Provider:           infisical.SecretRotationProviderPostgresCredentials,
+		Provider:           kmsclient.SecretRotationProviderPostgresCredentials,
 		SecretRotationName: "PostgreSQL Credentials",
 		ResourceTypeName:   "_secret_rotation_postgres_credentials",
-		AppConnection:      infisical.AppConnectionAppPostgres,
+		AppConnection:      kmsclient.AppConnectionAppPostgres,
 		ParametersAttributes: map[string]schema.Attribute{
 			"username1": schema.StringAttribute{
 				Required:    true,
@@ -64,7 +64,7 @@ func NewSecretRotationPostgresCredentialsResource() resource.Resource {
 			return parametersMap, diags
 		},
 
-		ReadParametersFromApi: func(ctx context.Context, secretRotation infisical.SecretRotation) (types.Object, diag.Diagnostics) {
+		ReadParametersFromApi: func(ctx context.Context, secretRotation kmsclient.SecretRotation) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 			parameters := make(map[string]attr.Value)
 			parametersSchema := map[string]attr.Type{
@@ -110,7 +110,7 @@ func NewSecretRotationPostgresCredentialsResource() resource.Resource {
 			return secretsMappingMap, diags
 		},
 
-		ReadSecretsMappingFromApi: func(ctx context.Context, secretRotation infisical.SecretRotation) (types.Object, diag.Diagnostics) {
+		ReadSecretsMappingFromApi: func(ctx context.Context, secretRotation kmsclient.SecretRotation) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 			secretsMapping := make(map[string]attr.Value)
 			secretsMappingSchema := map[string]attr.Type{

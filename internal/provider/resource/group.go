@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -24,7 +24,7 @@ func NewGroupResource() resource.Resource {
 
 // GroupResource is the resource implementation.
 type GroupResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // groupResourceSourceModel describes the resource data model.
@@ -43,7 +43,7 @@ func (r *GroupResource) Metadata(_ context.Context, req resource.MetadataRequest
 // Schema defines the schema for the resource.
 func (r *GroupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create groups & save to Infisical. Only Machine Identity authentication is supported for this resource",
+		Description: "Create groups & save to Kms. Only Machine Identity authentication is supported for this resource",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The id of the group.",
@@ -72,7 +72,7 @@ func (r *GroupResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -102,7 +102,7 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	request := infisical.CreateGroupRequest{
+	request := kmsclient.CreateGroupRequest{
 		Name: plan.Name.ValueString(),
 		Slug: plan.Slug.ValueString(),
 		Role: plan.Role.ValueString(),
@@ -138,9 +138,9 @@ func (r *GroupResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	groupResponse, err := r.client.GetGroupById(infisical.GetGroupByIdRequest{ID: state.ID.ValueString()})
+	groupResponse, err := r.client.GetGroupById(kmsclient.GetGroupByIdRequest{ID: state.ID.ValueString()})
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -179,7 +179,7 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	request := infisical.UpdateGroupRequest{
+	request := kmsclient.UpdateGroupRequest{
 		ID:   plan.ID.ValueString(),
 		Name: plan.Name.ValueString(),
 		Slug: plan.Slug.ValueString(),
@@ -215,7 +215,7 @@ func (r *GroupResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 
-	_, err := r.client.DeleteGroup(infisical.DeleteGroupRequest{ID: state.ID.ValueString()})
+	_, err := r.client.DeleteGroup(kmsclient.DeleteGroupRequest{ID: state.ID.ValueString()})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting group",
@@ -234,9 +234,9 @@ func (r *GroupResource) ImportState(ctx context.Context, req resource.ImportStat
 		return
 	}
 
-	groupResponse, err := r.client.GetGroupById(infisical.GetGroupByIdRequest{ID: req.ID})
+	groupResponse, err := r.client.GetGroupById(kmsclient.GetGroupByIdRequest{ID: req.ID})
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Error importing group",
 				fmt.Sprintf("No group found with ID: %s", req.ID),

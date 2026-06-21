@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -22,7 +22,7 @@ const AppConnectionDatabricksAuthMethodServicePrincipal = "service-principal"
 
 func NewAppConnectionDatabricksResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppDatabricks,
+		App:               kmsclient.AppConnectionAppDatabricks,
 		AppConnectionName: "Databricks",
 		ResourceTypeName:  "_app_connection_databricks",
 		AllowedMethods:    []string{AppConnectionDatabricksAuthMethodServicePrincipal},

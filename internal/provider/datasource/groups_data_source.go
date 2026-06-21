@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -21,7 +21,7 @@ func NewGroupsDataSource() datasource.DataSource {
 
 // GroupsDataSource defines the data source implementation.
 type GroupsDataSource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // ExampleDataSourceModel describes the data source data model.
@@ -29,7 +29,7 @@ type GroupsDataSourceModel struct {
 	Groups types.List `tfsdk:"groups"`
 }
 
-type InfisicalGroupDetails struct {
+type KmsGroupDetails struct {
 	ID     types.String `tfsdk:"id"`
 	Name   types.String `tfsdk:"name"`
 	OrgID  types.String `tfsdk:"org_id"`
@@ -43,7 +43,7 @@ func (d *GroupsDataSource) Metadata(ctx context.Context, req datasource.Metadata
 
 func (d *GroupsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Interact with Infisical groups in your organization.",
+		Description: "Interact with Kms groups in your organization.",
 		Attributes: map[string]schema.Attribute{
 			"groups": schema.ListNestedAttribute{
 				Description: "The groups list",
@@ -83,7 +83,7 @@ func (d *GroupsDataSource) Configure(ctx context.Context, req datasource.Configu
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -120,14 +120,14 @@ func (d *GroupsDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Something went wrong while fetching the groups",
-			"If the error is not clear, please get in touch at infisical.com/slack\n\n"+
-				"Infisical Client Error: "+err.Error(),
+			"If the error is not clear, please get in touch at hanzo.ai/slack\n\n"+
+				"Kms Client Error: "+err.Error(),
 		)
 	}
 
-	planGroups := make([]InfisicalGroupDetails, len(groups))
+	planGroups := make([]KmsGroupDetails, len(groups))
 	for i, el := range groups {
-		planGroups[i] = InfisicalGroupDetails{
+		planGroups[i] = KmsGroupDetails{
 			ID:     types.StringValue(el.ID),
 			Name:   types.StringValue(el.Name),
 			OrgID:  types.StringValue(el.OrgID),

@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -20,13 +20,13 @@ type MetaEntry struct {
 
 // DynamicSecretBaseResource is the resource implementation.
 type DynamicSecretBaseResource struct {
-	Provider                  infisical.DynamicSecretProvider
+	Provider                  kmsclient.DynamicSecretProvider
 	ResourceTypeName          string // terraform resource name suffix
 	DynamicSecretName         string // complete descriptive name of the dynamic secret
-	client                    *infisical.Client
+	client                    *kmsclient.Client
 	ConfigurationAttributes   map[string]schema.Attribute
 	ReadConfigurationFromPlan func(ctx context.Context, plan DynamicSecretBaseResourceModel) (map[string]interface{}, diag.Diagnostics)
-	ReadConfigurationFromApi  func(ctx context.Context, dynamicSecret infisical.DynamicSecret, configState types.Object) (types.Object, diag.Diagnostics)
+	ReadConfigurationFromApi  func(ctx context.Context, dynamicSecret kmsclient.DynamicSecret, configState types.Object) (types.Object, diag.Diagnostics)
 }
 
 type DynamicSecretBaseResourceModel struct {
@@ -118,7 +118,7 @@ func (r *DynamicSecretBaseResource) Configure(_ context.Context, req resource.Co
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -156,18 +156,18 @@ func (r *DynamicSecretBaseResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	metadata := []infisical.MetaEntry{}
+	metadata := []kmsclient.MetaEntry{}
 	if plan.Metadata != nil {
 		for _, el := range plan.Metadata {
-			metadata = append(metadata, infisical.MetaEntry{
+			metadata = append(metadata, kmsclient.MetaEntry{
 				Key:   el.Key.ValueString(),
 				Value: el.Value.ValueString(),
 			})
 		}
 	}
 
-	dynamicSecret, err := r.client.CreateDynamicSecret(infisical.CreateDynamicSecretRequest{
-		Provider: infisical.DynamicSecretProviderObject{
+	dynamicSecret, err := r.client.CreateDynamicSecret(kmsclient.CreateDynamicSecretRequest{
+		Provider: kmsclient.DynamicSecretProviderObject{
 			Provider: r.Provider,
 			Inputs:   configurationMap,
 		},
@@ -222,7 +222,7 @@ func (r *DynamicSecretBaseResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	dynamicSecret, err := r.client.GetDynamicSecretByName(infisical.GetDynamicSecretByNameRequest{
+	dynamicSecret, err := r.client.GetDynamicSecretByName(kmsclient.GetDynamicSecretByNameRequest{
 		ProjectSlug:     state.ProjectSlug.ValueString(),
 		EnvironmentSlug: state.EnvironmentSlug.ValueString(),
 		Path:            state.Path.ValueString(),
@@ -230,7 +230,7 @@ func (r *DynamicSecretBaseResource) Read(ctx context.Context, req resource.ReadR
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -312,10 +312,10 @@ func (r *DynamicSecretBaseResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	metadata := []infisical.MetaEntry{}
+	metadata := []kmsclient.MetaEntry{}
 	if plan.Metadata != nil {
 		for _, el := range plan.Metadata {
-			metadata = append(metadata, infisical.MetaEntry{
+			metadata = append(metadata, kmsclient.MetaEntry{
 				Key:   el.Key.ValueString(),
 				Value: el.Value.ValueString(),
 			})
@@ -327,12 +327,12 @@ func (r *DynamicSecretBaseResource) Update(ctx context.Context, req resource.Upd
 		newName = plan.Name.ValueString()
 	}
 
-	dynamicSecret, err := r.client.UpdateDynamicSecret(infisical.UpdateDynamicSecretRequest{
+	dynamicSecret, err := r.client.UpdateDynamicSecret(kmsclient.UpdateDynamicSecretRequest{
 		Name:            state.Name.ValueString(),
 		ProjectSlug:     state.ProjectSlug.ValueString(),
 		EnvironmentSlug: state.EnvironmentSlug.ValueString(),
 		Path:            state.Path.ValueString(),
-		Data: infisical.UpdateDynamicSecretData{
+		Data: kmsclient.UpdateDynamicSecretData{
 			Inputs:           configurationMap,
 			DefaultTTL:       plan.DefaultTTL.ValueString(),
 			MaxTTL:           plan.MaxTTL.ValueString(),
@@ -379,7 +379,7 @@ func (r *DynamicSecretBaseResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 
-	_, err := r.client.DeleteDynamicSecret(infisical.DeleteDynamicSecretRequest{
+	_, err := r.client.DeleteDynamicSecret(kmsclient.DeleteDynamicSecretRequest{
 		Name:            state.Name.ValueString(),
 		ProjectSlug:     state.ProjectSlug.ValueString(),
 		EnvironmentSlug: state.EnvironmentSlug.ValueString(),
@@ -389,7 +389,7 @@ func (r *DynamicSecretBaseResource) Delete(ctx context.Context, req resource.Del
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting dynamic secret",
-			"Couldn't delete dynamic secret from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete dynamic secret from Kms, unexpected error: "+err.Error(),
 		)
 	}
 }

@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -37,10 +37,10 @@ type SecretSyncAwsSecretsManagerSyncOptionsModel struct {
 
 func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 	return &SecretSyncBaseResource{
-		App:              infisical.SecretSyncAppAWSSecretsManager,
+		App:              kmsclient.SecretSyncAppAWSSecretsManager,
 		SyncName:         "AWS Secrets Manager",
 		ResourceTypeName: "_secret_sync_aws_secrets_manager",
-		AppConnection:    infisical.AppConnectionAppAWS,
+		AppConnection:    kmsclient.AppConnectionAppAWS,
 		CanImportSecrets: true,
 		DestinationConfigAttributes: map[string]schema.Attribute{
 			"aws_region": schema.StringAttribute{
@@ -50,8 +50,8 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 			"mapping_behavior": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString(infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE),
-				Description: "The behavior of the mapping. Can be 'many-to-one' or 'one-to-one'. Many to One: All Infisical secrets will be mapped to a single AWS secret. One to One: Each Infisical secret will be mapped to its own AWS secret.",
+				Default:     stringdefault.StaticString(kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE),
+				Description: "The behavior of the mapping. Can be 'many-to-one' or 'one-to-one'. Many to One: All Kms secrets will be mapped to a single AWS secret. One to One: Each Kms secret will be mapped to its own AWS secret.",
 			},
 			"aws_secrets_manager_secret_name": schema.StringAttribute{
 				Optional:    true,
@@ -61,12 +61,12 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 		SyncOptionsAttributes: map[string]schema.Attribute{
 			"initial_sync_behavior": schema.StringAttribute{
 				Required:    true,
-				Description: "Specify how Infisical should resolve the initial sync to the destination. Supported options: overwrite-destination, import-prioritize-source, import-prioritize-destination",
+				Description: "Specify how Kms should resolve the initial sync to the destination. Supported options: overwrite-destination, import-prioritize-source, import-prioritize-destination",
 			},
 			"disable_secret_deletion": schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "When set to true, Infisical will not remove secrets from AWS Secrets Manager. Enable this option if you intend to manage some secrets manually outside of Infisical.",
+				Description: "When set to true, Kms will not remove secrets from AWS Secrets Manager. Enable this option if you intend to manage some secrets manually outside of Kms.",
 				Default:     booldefault.StaticBool(false),
 			},
 			"aws_kms_key_id": schema.StringAttribute{
@@ -141,7 +141,7 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 			return syncOptionsMap, nil
 		},
 
-		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			syncOptionsMap := make(map[string]attr.Value)
 			var diags diag.Diagnostics
 
@@ -322,12 +322,12 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 				return nil, diags
 			}
 
-			if awsCfg.MappingBehavior.ValueString() != infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && awsCfg.MappingBehavior.ValueString() != infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE {
+			if awsCfg.MappingBehavior.ValueString() != kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && awsCfg.MappingBehavior.ValueString() != kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE {
 				diags.AddError("Invalid mapping behavior", "Mapping behavior must be 'many-to-one' or 'one-to-one'")
 				return nil, diags
 			}
 
-			if awsCfg.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && awsCfg.AwsSecretsManagerSecretName.ValueString() != "" {
+			if awsCfg.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && awsCfg.AwsSecretsManagerSecretName.ValueString() != "" {
 				diags.AddError(
 					"Invalid aws_secrets_manager_secret_name",
 					"aws_secrets_manager_secret_name cannot be provided when mapping behavior is 'one-to-one'",
@@ -335,7 +335,7 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 				return nil, diags
 			}
 
-			if awsCfg.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && awsCfg.AwsSecretsManagerSecretName.ValueString() == "" {
+			if awsCfg.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && awsCfg.AwsSecretsManagerSecretName.ValueString() == "" {
 				diags.AddError(
 					"Invalid aws_secrets_manager_secret_name",
 					"aws_secrets_manager_secret_name is required when mapping behavior is 'many-to-one'",
@@ -358,7 +358,7 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 				return nil, diags
 			}
 
-			if awsCfg.MappingBehavior.ValueString() != infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && awsCfg.MappingBehavior.ValueString() != infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE {
+			if awsCfg.MappingBehavior.ValueString() != kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && awsCfg.MappingBehavior.ValueString() != kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE {
 				diags.AddError(
 					"Invalid mapping behavior",
 					"Mapping behavior must be 'many-to-one' or 'one-to-one'",
@@ -366,7 +366,7 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 				return nil, diags
 			}
 
-			if awsCfg.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && awsCfg.AwsSecretsManagerSecretName.ValueString() != "" {
+			if awsCfg.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE && awsCfg.AwsSecretsManagerSecretName.ValueString() != "" {
 				diags.AddError(
 					"Invalid aws_secrets_manager_secret_name",
 					"aws_secrets_manager_secret_name cannot be provided when mapping behavior is 'one-to-one'",
@@ -374,7 +374,7 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 				return nil, diags
 			}
 
-			if awsCfg.MappingBehavior.ValueString() == infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && awsCfg.AwsSecretsManagerSecretName.ValueString() == "" {
+			if awsCfg.MappingBehavior.ValueString() == kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && awsCfg.AwsSecretsManagerSecretName.ValueString() == "" {
 				diags.AddError(
 					"Invalid aws_secrets_manager_secret_name",
 					"aws_secrets_manager_secret_name is required when mapping behavior is 'many-to-one'",
@@ -387,7 +387,7 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 			destinationConfig["secretName"] = awsCfg.AwsSecretsManagerSecretName.ValueString()
 			return destinationConfig, diags
 		},
-		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			regionVal, ok := secretSync.DestinationConfig["region"].(string)
@@ -400,7 +400,7 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 			}
 
 			mappingBehaviorVal, ok := secretSync.DestinationConfig["mappingBehavior"].(string)
-			if !ok || (mappingBehaviorVal != infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && mappingBehaviorVal != infisical.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE) {
+			if !ok || (mappingBehaviorVal != kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE && mappingBehaviorVal != kmsclient.AWS_MAPPING_BEHAVIOR_ONE_TO_ONE) {
 				diags.AddError(
 					"Invalid mapping behavior type",
 					"Expected 'mappingBehavior' to be 'many-to-one' or 'one-to-one' but got something else",
@@ -415,7 +415,7 @@ func NewSecretSyncAwsSecretsManagerResource() resource.Resource {
 
 			secretNameVal, ok := secretSync.DestinationConfig["secretName"].(string)
 
-			if mappingBehaviorVal == infisical.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE {
+			if mappingBehaviorVal == kmsclient.AWS_MAPPING_BEHAVIOR_MANY_TO_ONE {
 				if !ok {
 					diags.AddError(
 						"Invalid secret name type",

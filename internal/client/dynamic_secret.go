@@ -1,9 +1,9 @@
-package infisicalclient
+package kmsclient
 
 import (
 	"fmt"
+	"github.com/hanzokms/terraform-provider/internal/errors"
 	"net/http"
-	"terraform-provider-infisical/internal/errors"
 )
 
 type DynamicSecretProvider string

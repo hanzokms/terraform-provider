@@ -8,7 +8,7 @@ import (
 	"flag"
 	"log"
 
-	"terraform-provider-infisical/internal/provider"
+	"github.com/hanzokms/terraform-provider/internal/provider"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
@@ -43,7 +43,7 @@ func main() {
 
 	opts := providerserver.ServeOpts{
 		// TODO: Update this string with the published name of your provider.
-		Address: "registry.terraform.io/infisical/infisical",
+		Address: "registry.terraform.io/hanzokms/kms",
 		Debug:   debug,
 	}
 

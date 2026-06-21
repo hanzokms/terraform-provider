@@ -3,12 +3,12 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmsstrings "github.com/hanzokms/terraform-provider/internal/pkg/strings"
+	"github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"strconv"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicalstrings "terraform-provider-infisical/internal/pkg/strings"
-	"terraform-provider-infisical/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -29,7 +29,7 @@ func NewIdentityOidcAuthResource() resource.Resource {
 
 // IdentityOidcAuthResource is the resource implementation.
 type IdentityOidcAuthResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityOidcAuthResourceSourceModel describes the data source data model.
@@ -61,7 +61,7 @@ func (r *IdentityOidcAuthResource) Metadata(_ context.Context, req resource.Meta
 // Schema defines the schema for the resource.
 func (r *IdentityOidcAuthResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity oidc auth in Infisical.",
+		Description: "Create and manage identity oidc auth in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the oidc auth.",
@@ -163,7 +163,7 @@ func (r *IdentityOidcAuthResource) Configure(_ context.Context, req resource.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -177,7 +177,7 @@ func (r *IdentityOidcAuthResource) Configure(_ context.Context, req resource.Con
 	r.client = client
 }
 
-func updateOidcAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityOidcAuthResourceModel, newIdentityOidcAuth *infisical.IdentityOidcAuth) {
+func updateOidcAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityOidcAuthResourceModel, newIdentityOidcAuth *kmsclient.IdentityOidcAuth) {
 	plan.AccessTokenMaxTTL = types.Int64Value(newIdentityOidcAuth.AccessTokenMaxTTL)
 	plan.AccessTokenTTL = types.Int64Value(newIdentityOidcAuth.AccessTokenTTL)
 	plan.AccessTokenNumUsesLimit = types.Int64Value(newIdentityOidcAuth.AccessTokenNumUsesLimit)
@@ -233,7 +233,7 @@ func updateOidcAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, pl
 	plan.BoundClaims = boundClaimsMapValue
 	plan.ClaimMetadataMapping = claimMetadataMappingMapValue
 
-	plan.BoundAudiences, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityOidcAuth.BoundAudiences, ","))
+	plan.BoundAudiences, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityOidcAuth.BoundAudiences, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
@@ -307,7 +307,7 @@ func (r *IdentityOidcAuthResource) Create(ctx context.Context, req resource.Crea
 		}
 	}
 
-	newIdentityOidcAuth, err := r.client.CreateIdentityOidcAuth(infisical.CreateIdentityOidcAuthRequest{
+	newIdentityOidcAuth, err := r.client.CreateIdentityOidcAuth(kmsclient.CreateIdentityOidcAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTTL:          plan.AccessTokenTTL.ValueInt64(),
 		AccessTokenMaxTTL:       plan.AccessTokenMaxTTL.ValueInt64(),
@@ -359,12 +359,12 @@ func (r *IdentityOidcAuthResource) Read(ctx context.Context, req resource.ReadRe
 	}
 
 	// Get the latest data from the API
-	identityOidcAuth, err := r.client.GetIdentityOidcAuth(infisical.GetIdentityOidcAuthRequest{
+	identityOidcAuth, err := r.client.GetIdentityOidcAuth(kmsclient.GetIdentityOidcAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -432,7 +432,7 @@ func (r *IdentityOidcAuthResource) Update(ctx context.Context, req resource.Upda
 		}
 	}
 
-	updatedIdentityOidcAuth, err := r.client.UpdateIdentityOidcAuth(infisical.UpdateIdentityOidcAuthRequest{
+	updatedIdentityOidcAuth, err := r.client.UpdateIdentityOidcAuth(kmsclient.UpdateIdentityOidcAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTTL:          plan.AccessTokenTTL.ValueInt64(),
 		AccessTokenMaxTTL:       plan.AccessTokenMaxTTL.ValueInt64(),
@@ -482,7 +482,7 @@ func (r *IdentityOidcAuthResource) Delete(ctx context.Context, req resource.Dele
 		return
 	}
 
-	_, err := r.client.RevokeIdentityOidcAuth(infisical.RevokeIdentityOidcAuthRequest{
+	_, err := r.client.RevokeIdentityOidcAuth(kmsclient.RevokeIdentityOidcAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 

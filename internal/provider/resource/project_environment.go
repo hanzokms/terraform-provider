@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -22,7 +22,7 @@ func NewProjectEnvironmentResource() resource.Resource {
 
 // projectEnvironmentResource is the resource implementation.
 type projectEnvironmentResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type projectEnvironmentResourceModel struct {
@@ -56,11 +56,11 @@ func (r *projectEnvironmentResource) Schema(_ context.Context, _ resource.Schema
 				Description: "The slug of the environment",
 				Required:    true,
 				Validators: []validator.String{
-					infisicaltf.SlugRegexValidator,
+					kmstf.SlugRegexValidator,
 				},
 			},
 			"project_id": schema.StringAttribute{
-				Description:   "The Infisical project ID (Required for Machine Identity auth, and service tokens with multiple scopes)",
+				Description:   "The Kms project ID (Required for Machine Identity auth, and service tokens with multiple scopes)",
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -79,7 +79,7 @@ func (r *projectEnvironmentResource) Configure(_ context.Context, req resource.C
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -111,7 +111,7 @@ func (r *projectEnvironmentResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
-	request := infisical.CreateProjectEnvironmentRequest{
+	request := kmsclient.CreateProjectEnvironmentRequest{
 		Name:      plan.Name.ValueString(),
 		ProjectID: plan.ProjectID.ValueString(),
 		Slug:      plan.Slug.ValueString(),
@@ -167,7 +167,7 @@ func (r *projectEnvironmentResource) Delete(ctx context.Context, req resource.De
 		return
 	}
 
-	_, err := r.client.DeleteProjectEnvironment(infisical.DeleteProjectEnvironmentRequest{
+	_, err := r.client.DeleteProjectEnvironment(kmsclient.DeleteProjectEnvironmentRequest{
 		ID:        state.ID.ValueString(),
 		ProjectID: state.ProjectID.ValueString(),
 	})
@@ -205,12 +205,12 @@ func (r *projectEnvironmentResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
-	projectEnvironment, err := r.client.GetProjectEnvironmentByID(infisical.GetProjectEnvironmentByIDRequest{
+	projectEnvironment, err := r.client.GetProjectEnvironmentByID(kmsclient.GetProjectEnvironmentByIDRequest{
 		ID: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -258,7 +258,7 @@ func (r *projectEnvironmentResource) Update(ctx context.Context, req resource.Up
 		return
 	}
 
-	updatedEnvironment, err := r.client.UpdateProjectEnvironment(infisical.UpdateProjectEnvironmentRequest{
+	updatedEnvironment, err := r.client.UpdateProjectEnvironment(kmsclient.UpdateProjectEnvironmentRequest{
 		ProjectID: plan.ProjectID.ValueString(),
 		Name:      plan.Name.ValueString(),
 		ID:        plan.ID.ValueString(),
@@ -287,12 +287,12 @@ func (r *projectEnvironmentResource) Update(ctx context.Context, req resource.Up
 
 func (r *projectEnvironmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 
-	projectEnvironment, err := r.client.GetProjectEnvironmentByID(infisical.GetProjectEnvironmentByIDRequest{
+	projectEnvironment, err := r.client.GetProjectEnvironmentByID(kmsclient.GetProjectEnvironmentByIDRequest{
 		ID: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Project environment not found",
 				"The project environment with the given slug was not found",

@@ -2,7 +2,7 @@ package pkg
 
 import (
 	"context"
-	pkg "terraform-provider-infisical/internal/pkg/strings"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"

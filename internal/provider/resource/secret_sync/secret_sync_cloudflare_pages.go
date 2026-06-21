@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -27,10 +27,10 @@ type SecretSyncCloudflarePagesSyncOptionsModel struct {
 
 func NewSecretSyncCloudflarePagesResource() resource.Resource {
 	return &SecretSyncBaseResource{
-		App:              infisical.SecretSyncAppCloudflarePages,
+		App:              kmsclient.SecretSyncAppCloudflarePages,
 		SyncName:         "Cloudflare Pages",
 		ResourceTypeName: "_secret_sync_cloudflare_pages",
-		AppConnection:    infisical.AppConnectionAppCloudflare,
+		AppConnection:    kmsclient.AppConnectionAppCloudflare,
 		DestinationConfigAttributes: map[string]schema.Attribute{
 			"project_name": schema.StringAttribute{
 				Required:    true,
@@ -44,12 +44,12 @@ func NewSecretSyncCloudflarePagesResource() resource.Resource {
 		SyncOptionsAttributes: map[string]schema.Attribute{
 			"initial_sync_behavior": schema.StringAttribute{
 				Required:    true,
-				Description: "Specify how Infisical should resolve the initial sync to the destination. Supported options: overwrite-destination, import-prioritize-source, import-prioritize-destination",
+				Description: "Specify how Kms should resolve the initial sync to the destination. Supported options: overwrite-destination, import-prioritize-source, import-prioritize-destination",
 			},
 			"disable_secret_deletion": schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "When set to true, Infisical will not remove secrets from Cloudflare Pages. Enable this option if you intend to manage some secrets manually outside of Infisical.",
+				Description: "When set to true, Kms will not remove secrets from Cloudflare Pages. Enable this option if you intend to manage some secrets manually outside of Kms.",
 				Default:     booldefault.StaticBool(false),
 			},
 			"key_schema": schema.StringAttribute{
@@ -125,7 +125,7 @@ func NewSecretSyncCloudflarePagesResource() resource.Resource {
 			return syncOptionsMap, diags
 		},
 
-		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			syncOptionsAttrTypes := map[string]attr.Type{
 				"initial_sync_behavior":   types.StringType,
 				"disable_secret_deletion": types.BoolType,
@@ -239,7 +239,7 @@ func NewSecretSyncCloudflarePagesResource() resource.Resource {
 			return destinationConfigMap, diags
 		},
 
-		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			destinationConfigAttrTypes := map[string]attr.Type{
 				"project_name": types.StringType,
 				"environment":  types.StringType,

@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -28,7 +28,7 @@ func NewCertManagerCACertificateResource() resource.Resource {
 }
 
 type certManagerCACertificateResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type certManagerCACertificateResourceModel struct {
@@ -49,7 +49,7 @@ func (r *certManagerCACertificateResource) Metadata(_ context.Context, req resou
 
 func (r *certManagerCACertificateResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage CA certificates in Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create and manage CA certificates in Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"ca_id": schema.StringAttribute{
 				Description: "The ID of the certificate authority to generate a certificate for",
@@ -121,11 +121,11 @@ func (r *certManagerCACertificateResource) Configure(_ context.Context, req reso
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *infisical.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *kmsclient.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -166,7 +166,7 @@ func (r *certManagerCACertificateResource) Create(ctx context.Context, req resou
 		return
 	}
 
-	ca, err := r.client.GetInternalCA(infisical.GetCARequest{
+	ca, err := r.client.GetInternalCA(kmsclient.GetCARequest{
 		CAId: plan.CaId.ValueString(),
 	})
 	if err != nil {
@@ -189,7 +189,7 @@ func (r *certManagerCACertificateResource) Create(ctx context.Context, req resou
 		)
 	}
 
-	generateRequest := infisical.GenerateCACertificateRequest{
+	generateRequest := kmsclient.GenerateCACertificateRequest{
 		CaId:      plan.CaId.ValueString(),
 		NotBefore: plan.NotBefore.ValueString(),
 		NotAfter:  plan.NotAfter.ValueString(),
@@ -234,12 +234,12 @@ func (r *certManagerCACertificateResource) Read(ctx context.Context, req resourc
 		return
 	}
 
-	certificate, err := r.client.GetSpecificCACertificate(infisical.GetSpecificCACertificateRequest{
+	certificate, err := r.client.GetSpecificCACertificate(kmsclient.GetSpecificCACertificateRequest{
 		CaId:   state.CaId.ValueString(),
 		CertId: state.Id.ValueString(),
 	})
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -275,13 +275,13 @@ func (r *certManagerCACertificateResource) Delete(ctx context.Context, req resou
 		return
 	}
 
-	_, err := r.client.GetSpecificCACertificate(infisical.GetSpecificCACertificateRequest{
+	_, err := r.client.GetSpecificCACertificate(kmsclient.GetSpecificCACertificateRequest{
 		CaId:   state.CaId.ValueString(),
 		CertId: state.Id.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			return
 		}
 		resp.Diagnostics.AddError("Error checking CA certificate", err.Error())
@@ -303,10 +303,10 @@ func (r *certManagerCACertificateResource) ImportState(ctx context.Context, req 
 			"Invalid import ID format",
 			fmt.Sprintf("Expected format: 'ca_id:certificate_id', but got: '%s'\n\n"+
 				"To import a CA certificate:\n"+
-				"1. Find your CA ID in the Infisical dashboard (Certificate Manager → CAs)\n"+
+				"1. Find your CA ID in the Kms dashboard (Certificate Manager → CAs)\n"+
 				"2. Find the certificate ID in the CA's certificates list\n"+
-				"3. Use: terraform import infisical_cert_manager_ca_certificate.name \"ca_id:certificate_id\"\n\n"+
-				"Example: terraform import infisical_cert_manager_ca_certificate.my_cert \"87501291-4677-4328-92dd-f229aa0e21df:e3b6427a-6bf0-43fc-bdac-7022e996842c\"",
+				"3. Use: terraform import kms_cert_manager_ca_certificate.name \"ca_id:certificate_id\"\n\n"+
+				"Example: terraform import kms_cert_manager_ca_certificate.my_cert \"87501291-4677-4328-92dd-f229aa0e21df:e3b6427a-6bf0-43fc-bdac-7022e996842c\"",
 				req.ID),
 		)
 		return
@@ -315,12 +315,12 @@ func (r *certManagerCACertificateResource) ImportState(ctx context.Context, req 
 	caId := parts[0]
 	certId := parts[1]
 
-	certificate, err := r.client.GetSpecificCACertificate(infisical.GetSpecificCACertificateRequest{
+	certificate, err := r.client.GetSpecificCACertificate(kmsclient.GetSpecificCACertificateRequest{
 		CaId:   caId,
 		CertId: certId,
 	})
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError("CA certificate not found", "The CA certificate does not exist or has been deleted")
 			return
 		}

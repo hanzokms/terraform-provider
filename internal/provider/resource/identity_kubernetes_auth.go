@@ -3,11 +3,11 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmsstrings "github.com/hanzokms/terraform-provider/internal/pkg/strings"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"strconv"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	infisicalstrings "terraform-provider-infisical/internal/pkg/strings"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -29,7 +29,7 @@ func NewIdentityKubernetesAuthResource() resource.Resource {
 
 // IdentityKubernetesAuthResource is the resource implementation.
 type IdentityKubernetesAuthResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityKubernetesAuthResourceSourceModel describes the data source data model.
@@ -68,7 +68,7 @@ const (
 // Schema defines the schema for the resource.
 func (r *IdentityKubernetesAuthResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity kubernetes auth in Infisical.",
+		Description: "Create and manage identity kubernetes auth in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the kubernetes auth",
@@ -85,8 +85,8 @@ func (r *IdentityKubernetesAuthResource) Schema(_ context.Context, _ resource.Sc
 				Optional:    true,
 			},
 			"token_reviewer_jwt": schema.StringAttribute{
-				Description:         "A long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5.",
-				MarkdownDescription: "A long-lived service account JWT token for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5.",
+				Description:         "A long-lived service account JWT token for Kms to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5.",
+				MarkdownDescription: "A long-lived service account JWT token for Kms to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5.",
 				Optional:            true,
 			},
 
@@ -112,18 +112,18 @@ func (r *IdentityKubernetesAuthResource) Schema(_ context.Context, _ resource.Sc
 			},
 			"allowed_service_account_names": schema.ListAttribute{
 				ElementType: types.StringType,
-				Description: "List of trusted service account names that are allowed to authenticate with Infisical.",
+				Description: "List of trusted service account names that are allowed to authenticate with Kms.",
 				Optional:    true,
 				Computed:    true,
 			},
 			"allowed_audience": schema.StringAttribute{
-				Description: "An optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+				Description: "An optional audience claim that the service account JWT token must have to authenticate with Kms.",
 				Optional:    true,
 				Computed:    true,
 			},
 			"allowed_namespaces": schema.ListAttribute{
 				ElementType: types.StringType,
-				Description: "List of trusted namespaces that service accounts must belong to authenticate with Infisical.",
+				Description: "List of trusted namespaces that service accounts must belong to authenticate with Kms.",
 				Optional:    true,
 				Computed:    true,
 			},
@@ -165,7 +165,7 @@ func (r *IdentityKubernetesAuthResource) Configure(_ context.Context, req resour
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -179,7 +179,7 @@ func (r *IdentityKubernetesAuthResource) Configure(_ context.Context, req resour
 	r.client = client
 }
 
-func updateKubernetesAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityKubernetesAuthResourceModel, newIdentityKubernetesAuth *infisical.IdentityKubernetesAuth) {
+func updateKubernetesAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityKubernetesAuthResourceModel, newIdentityKubernetesAuth *kmsclient.IdentityKubernetesAuth) {
 	plan.AccessTokenMaxTTL = types.Int64Value(newIdentityKubernetesAuth.AccessTokenMaxTTL)
 	plan.AccessTokenTTL = types.Int64Value(newIdentityKubernetesAuth.AccessTokenTTL)
 	plan.AccessTokenNumUsesLimit = types.Int64Value(newIdentityKubernetesAuth.AccessTokenNumUsesLimit)
@@ -214,13 +214,13 @@ func updateKubernetesAuthStateByApi(ctx context.Context, diagnose diag.Diagnosti
 		return
 	}
 
-	plan.AllowedNamespaces, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityKubernetesAuth.AllowedNamespaces, ","))
+	plan.AllowedNamespaces, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityKubernetesAuth.AllowedNamespaces, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
 	}
 
-	plan.AllowedServiceAccountNames, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityKubernetesAuth.AllowedServiceAccountNames, ","))
+	plan.AllowedServiceAccountNames, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityKubernetesAuth.AllowedServiceAccountNames, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
@@ -328,9 +328,9 @@ func (r *IdentityKubernetesAuthResource) Create(ctx context.Context, req resourc
 	}
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
-	allowedNamespacpes := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedNamespaces)
-	allowedNames := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServiceAccountNames)
-	newIdentityKubernetesAuth, err := r.client.CreateIdentityKubernetesAuth(infisical.CreateIdentityKubernetesAuthRequest{
+	allowedNamespacpes := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedNamespaces)
+	allowedNames := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServiceAccountNames)
+	newIdentityKubernetesAuth, err := r.client.CreateIdentityKubernetesAuth(kmsclient.CreateIdentityKubernetesAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		TokenReviewerMode:       plan.TokenReviewerMode.ValueString(),
 		GatewayID:               gatewayID,
@@ -383,12 +383,12 @@ func (r *IdentityKubernetesAuthResource) Read(ctx context.Context, req resource.
 	}
 
 	// Get the latest data from the API
-	identityKubernetesAuth, err := r.client.GetIdentityKubernetesAuth(infisical.GetIdentityKubernetesAuthRequest{
+	identityKubernetesAuth, err := r.client.GetIdentityKubernetesAuth(kmsclient.GetIdentityKubernetesAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -458,9 +458,9 @@ func (r *IdentityKubernetesAuthResource) Update(ctx context.Context, req resourc
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
 
-	allowedNamespacpes := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedNamespaces)
-	allowedNames := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServiceAccountNames)
-	updatedIdentityKubernetesAuth, err := r.client.UpdateIdentityKubernetesAuth(infisical.UpdateIdentityKubernetesAuthRequest{
+	allowedNamespacpes := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedNamespaces)
+	allowedNames := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServiceAccountNames)
+	updatedIdentityKubernetesAuth, err := r.client.UpdateIdentityKubernetesAuth(kmsclient.UpdateIdentityKubernetesAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTrustedIPS:   accessTokenTrustedIps,
 		TokenReviewerMode:       plan.TokenReviewerMode.ValueString(),
@@ -511,7 +511,7 @@ func (r *IdentityKubernetesAuthResource) Delete(ctx context.Context, req resourc
 		return
 	}
 
-	_, err := r.client.RevokeIdentityKubernetesAuth(infisical.RevokeIdentityKubernetesAuthRequest{
+	_, err := r.client.RevokeIdentityKubernetesAuth(kmsclient.RevokeIdentityKubernetesAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 

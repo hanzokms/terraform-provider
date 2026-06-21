@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -34,7 +34,7 @@ func NewCertManagerCertificateProfileResource() resource.Resource {
 }
 
 type certManagerCertificateProfileResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type certManagerCertificateProfileEstConfigModel struct {
@@ -72,7 +72,7 @@ func (r *certManagerCertificateProfileResource) Metadata(_ context.Context, req 
 
 func (r *certManagerCertificateProfileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage certificate profiles in Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create and manage certificate profiles in Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"project_slug": schema.StringAttribute{
 				Description: "The slug of the cert-manager project",
@@ -196,11 +196,11 @@ func (r *certManagerCertificateProfileResource) Configure(_ context.Context, req
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *infisical.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *kmsclient.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -261,7 +261,7 @@ func (r *certManagerCertificateProfileResource) Create(ctx context.Context, req 
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 	if err != nil {
@@ -269,7 +269,7 @@ func (r *certManagerCertificateProfileResource) Create(ctx context.Context, req 
 		return
 	}
 
-	createProfileRequest := infisical.CreateCertificateProfileRequest{
+	createProfileRequest := kmsclient.CreateCertificateProfileRequest{
 		ProjectId:           project.ID,
 		CertificatePolicyId: plan.CertificatePolicyId.ValueString(),
 		Slug:                plan.Name.ValueString(),
@@ -286,7 +286,7 @@ func (r *certManagerCertificateProfileResource) Create(ctx context.Context, req 
 	}
 
 	if plan.EstConfig != nil {
-		createProfileRequest.EstConfig = &infisical.CertificateProfileEstConfig{
+		createProfileRequest.EstConfig = &kmsclient.CertificateProfileEstConfig{
 			DisableBootstrapCaValidation: plan.EstConfig.DisableBootstrapCaValidation.ValueBool(),
 			Passphrase:                   plan.EstConfig.Passphrase.ValueString(),
 		}
@@ -296,7 +296,7 @@ func (r *certManagerCertificateProfileResource) Create(ctx context.Context, req 
 	}
 
 	if plan.ApiConfig != nil {
-		createProfileRequest.ApiConfig = &infisical.CertificateProfileApiConfig{
+		createProfileRequest.ApiConfig = &kmsclient.CertificateProfileApiConfig{
 			AutoRenew: plan.ApiConfig.AutoRenew.ValueBool(),
 		}
 		if !plan.ApiConfig.RenewBeforeDays.IsNull() {
@@ -305,7 +305,7 @@ func (r *certManagerCertificateProfileResource) Create(ctx context.Context, req 
 	}
 
 	if plan.ExternalConfigs != nil && !plan.ExternalConfigs.Template.IsNull() {
-		createProfileRequest.ExternalConfigs = &infisical.CertificateProfileExternalConfigs{
+		createProfileRequest.ExternalConfigs = &kmsclient.CertificateProfileExternalConfigs{
 			Template: plan.ExternalConfigs.Template.ValueString(),
 		}
 	}
@@ -338,12 +338,12 @@ func (r *certManagerCertificateProfileResource) Read(ctx context.Context, req re
 
 	var state certManagerCertificateProfileResourceModel
 
-	profile, err := r.client.GetCertificateProfile(infisical.GetCertificateProfileRequest{
+	profile, err := r.client.GetCertificateProfile(kmsclient.GetCertificateProfileRequest{
 		ProfileId:      currentState.Id.ValueString(),
 		IncludeConfigs: true,
 	})
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -425,14 +425,14 @@ func (r *certManagerCertificateProfileResource) Update(ctx context.Context, req 
 		return
 	}
 
-	updateProfileRequest := infisical.UpdateCertificateProfileRequest{
+	updateProfileRequest := kmsclient.UpdateCertificateProfileRequest{
 		ProfileId:   plan.Id.ValueString(),
 		Slug:        plan.Name.ValueString(),
 		Description: plan.Description.ValueString(),
 	}
 
 	if plan.EstConfig != nil {
-		updateProfileRequest.EstConfig = &infisical.CertificateProfileEstConfig{
+		updateProfileRequest.EstConfig = &kmsclient.CertificateProfileEstConfig{
 			DisableBootstrapCaValidation: plan.EstConfig.DisableBootstrapCaValidation.ValueBool(),
 			Passphrase:                   plan.EstConfig.Passphrase.ValueString(),
 		}
@@ -442,7 +442,7 @@ func (r *certManagerCertificateProfileResource) Update(ctx context.Context, req 
 	}
 
 	if plan.ApiConfig != nil {
-		updateProfileRequest.ApiConfig = &infisical.CertificateProfileApiConfig{
+		updateProfileRequest.ApiConfig = &kmsclient.CertificateProfileApiConfig{
 			AutoRenew: plan.ApiConfig.AutoRenew.ValueBool(),
 		}
 		if !plan.ApiConfig.RenewBeforeDays.IsNull() {
@@ -451,7 +451,7 @@ func (r *certManagerCertificateProfileResource) Update(ctx context.Context, req 
 	}
 
 	if plan.ExternalConfigs != nil && !plan.ExternalConfigs.Template.IsNull() {
-		updateProfileRequest.ExternalConfigs = &infisical.CertificateProfileExternalConfigs{
+		updateProfileRequest.ExternalConfigs = &kmsclient.CertificateProfileExternalConfigs{
 			Template: plan.ExternalConfigs.Template.ValueString(),
 		}
 	}
@@ -481,7 +481,7 @@ func (r *certManagerCertificateProfileResource) Delete(ctx context.Context, req 
 		return
 	}
 
-	_, err := r.client.DeleteCertificateProfile(infisical.DeleteCertificateProfileRequest{
+	_, err := r.client.DeleteCertificateProfile(kmsclient.DeleteCertificateProfileRequest{
 		ProfileId: state.Id.ValueString(),
 	})
 	if err != nil {

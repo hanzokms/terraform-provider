@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -16,10 +16,10 @@ import (
 
 // AppConnectionBaseResource is the resource implementation.
 type AppConnectionBaseResource struct {
-	App                              infisical.AppConnectionApp // used for identifying secret sync route
+	App                              kmsclient.AppConnectionApp // used for identifying secret sync route
 	ResourceTypeName                 string                     // terraform resource name suffix
 	AppConnectionName                string                     // complete descriptive name of the app connection
-	client                           *infisical.Client
+	client                           *kmsclient.Client
 	AllowedMethods                   []string
 	CredentialsAttributes            map[string]schema.Attribute
 	ReadCredentialsForCreateFromPlan func(ctx context.Context, plan AppConnectionBaseResourceModel) (map[string]any, diag.Diagnostics)
@@ -87,7 +87,7 @@ func (r *AppConnectionBaseResource) Configure(_ context.Context, req resource.Co
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -141,7 +141,7 @@ func (r *AppConnectionBaseResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	appConnection, err := r.client.CreateAppConnection(infisical.CreateAppConnectionRequest{
+	appConnection, err := r.client.CreateAppConnection(kmsclient.CreateAppConnectionRequest{
 		App:         r.App,
 		Name:        plan.Name.ValueString(),
 		Description: plan.Description.ValueString(),
@@ -186,13 +186,13 @@ func (r *AppConnectionBaseResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	appConnection, err := r.client.GetAppConnectionById(infisical.GetAppConnectionByIdRequest{
+	appConnection, err := r.client.GetAppConnectionById(kmsclient.GetAppConnectionByIdRequest{
 		App: r.App,
 		ID:  state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -285,7 +285,7 @@ func (r *AppConnectionBaseResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	appConnection, err := r.client.UpdateAppConnection(infisical.UpdateAppConnectionRequest{
+	appConnection, err := r.client.UpdateAppConnection(kmsclient.UpdateAppConnectionRequest{
 		ID:          state.ID.ValueString(),
 		App:         r.App,
 		Name:        plan.Name.ValueString(),
@@ -328,7 +328,7 @@ func (r *AppConnectionBaseResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 
-	_, err := r.client.DeleteAppConnection(infisical.DeleteAppConnectionRequest{
+	_, err := r.client.DeleteAppConnection(kmsclient.DeleteAppConnectionRequest{
 		App: r.App,
 		ID:  state.ID.ValueString(),
 	})
@@ -336,7 +336,7 @@ func (r *AppConnectionBaseResource) Delete(ctx context.Context, req resource.Del
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting app connection",
-			"Couldn't delete app connection from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete app connection from Kms, unexpected error: "+err.Error(),
 		)
 	}
 }

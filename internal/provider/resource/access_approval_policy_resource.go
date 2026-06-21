@@ -3,9 +3,9 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -22,7 +22,7 @@ func NewAccessApprovalPolicyResource() resource.Resource {
 
 // accessApprovalPolicyResource is the resource implementation.
 type accessApprovalPolicyResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type AccessApprover struct {
@@ -123,7 +123,7 @@ func (r *accessApprovalPolicyResource) Configure(_ context.Context, req resource
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -155,7 +155,7 @@ func (r *accessApprovalPolicyResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	projectDetail, err := r.client.GetProjectById(infisical.GetProjectByIdRequest{
+	projectDetail, err := r.client.GetProjectById(kmsclient.GetProjectByIdRequest{
 		ID: plan.ProjectID.ValueString(),
 	})
 
@@ -167,7 +167,7 @@ func (r *accessApprovalPolicyResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	var approvers []infisical.CreateAccessApprovalPolicyApprover
+	var approvers []kmsclient.CreateAccessApprovalPolicyApprover
 	for _, el := range plan.Approvers {
 		if el.Type.ValueString() == "user" {
 			if el.Name.IsNull() {
@@ -203,7 +203,7 @@ func (r *accessApprovalPolicyResource) Create(ctx context.Context, req resource.
 			}
 		}
 
-		approvers = append(approvers, infisical.CreateAccessApprovalPolicyApprover{
+		approvers = append(approvers, kmsclient.CreateAccessApprovalPolicyApprover{
 			ID:   el.ID.ValueString(),
 			Name: el.Name.ValueString(),
 			Type: el.Type.ValueString(),
@@ -220,7 +220,7 @@ func (r *accessApprovalPolicyResource) Create(ctx context.Context, req resource.
 	environments := make([]string, 0)
 
 	if !plan.EnvironmentSlugs.IsNull() {
-		envSlugs := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.EnvironmentSlugs)
+		envSlugs := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.EnvironmentSlugs)
 		if envSlugs != nil {
 			environments = append(environments, envSlugs...)
 		}
@@ -240,7 +240,7 @@ func (r *accessApprovalPolicyResource) Create(ctx context.Context, req resource.
 		environments = append(environments, plan.EnvironmentSlug.ValueString())
 	}
 
-	accessApprovalPolicy, err := r.client.CreateAccessApprovalPolicy(infisical.CreateAccessApprovalPolicyRequest{
+	accessApprovalPolicy, err := r.client.CreateAccessApprovalPolicy(kmsclient.CreateAccessApprovalPolicyRequest{
 		Name:              plan.Name.ValueString(),
 		ProjectSlug:       projectDetail.Slug,
 		Environments:      environments,
@@ -286,12 +286,12 @@ func (r *accessApprovalPolicyResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	accessApprovalPolicy, err := r.client.GetAccessApprovalPolicyByID(infisical.GetAccessApprovalPolicyByIDRequest{
+	accessApprovalPolicy, err := r.client.GetAccessApprovalPolicyByID(kmsclient.GetAccessApprovalPolicyByIDRequest{
 		ID: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -385,7 +385,7 @@ func (r *accessApprovalPolicyResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	if state.EnvironmentSlug != plan.EnvironmentSlug && infisicaltf.IsAttrValueEmpty(plan.EnvironmentSlugs) {
+	if state.EnvironmentSlug != plan.EnvironmentSlug && kmstf.IsAttrValueEmpty(plan.EnvironmentSlugs) {
 		resp.Diagnostics.AddError(
 			"Unable to update access approval policy",
 			fmt.Sprintf("Cannot change environment, previous environment: %s, new environment: %s", state.EnvironmentSlug, plan.EnvironmentSlug),
@@ -393,7 +393,7 @@ func (r *accessApprovalPolicyResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	var approvers []infisical.UpdateAccessApprovalPolicyApprover
+	var approvers []kmsclient.UpdateAccessApprovalPolicyApprover
 	for _, el := range plan.Approvers {
 		if el.Type.ValueString() == "user" {
 			if el.Name.IsNull() {
@@ -429,7 +429,7 @@ func (r *accessApprovalPolicyResource) Update(ctx context.Context, req resource.
 			}
 		}
 
-		approvers = append(approvers, infisical.UpdateAccessApprovalPolicyApprover{
+		approvers = append(approvers, kmsclient.UpdateAccessApprovalPolicyApprover{
 			ID:   el.ID.ValueString(),
 			Name: el.Name.ValueString(),
 			Type: el.Type.ValueString(),
@@ -438,12 +438,12 @@ func (r *accessApprovalPolicyResource) Update(ctx context.Context, req resource.
 
 	var environments []string
 	if !state.EnvironmentSlugs.IsNull() {
-		environments = infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.EnvironmentSlugs)
+		environments = kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.EnvironmentSlugs)
 	} else {
 		environments = []string{plan.EnvironmentSlug.ValueString()}
 	}
 
-	_, err := r.client.UpdateAccessApprovalPolicy(infisical.UpdateAccessApprovalPolicyRequest{
+	_, err := r.client.UpdateAccessApprovalPolicy(kmsclient.UpdateAccessApprovalPolicyRequest{
 		ID:                plan.ID.ValueString(),
 		Name:              plan.Name.ValueString(),
 		SecretPath:        plan.SecretPath.ValueString(),
@@ -485,7 +485,7 @@ func (r *accessApprovalPolicyResource) Delete(ctx context.Context, req resource.
 		return
 	}
 
-	_, err := r.client.DeleteAccessApprovalPolicy(infisical.DeleteAccessApprovalPolicyRequest{
+	_, err := r.client.DeleteAccessApprovalPolicy(kmsclient.DeleteAccessApprovalPolicyRequest{
 		ID: state.ID.ValueString(),
 	})
 

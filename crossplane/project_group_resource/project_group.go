@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
 	"net/url"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -27,7 +27,7 @@ func NewProjectGroupResource() resource.Resource {
 
 // ProjectGroupResource is the resource implementation.
 type ProjectGroupResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // projectResourceSourceModel describes the data source data model.
@@ -51,7 +51,7 @@ func (r *ProjectGroupResource) Metadata(_ context.Context, req resource.Metadata
 // Schema defines the schema for the resource.
 func (r *ProjectGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create project groups & save to Infisical. Only Machine Identity authentication is supported for this data source",
+		Description: "Create project groups & save to Kms. Only Machine Identity authentication is supported for this data source",
 		Attributes: map[string]schema.Attribute{
 			"project_id": schema.StringAttribute{
 				Description: "The id of the project.",
@@ -89,7 +89,7 @@ func (r *ProjectGroupResource) Configure(_ context.Context, req resource.Configu
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -147,7 +147,7 @@ func (r *ProjectGroupResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	var roles []infisical.CreateProjectGroupRequestRoles
+	var roles []kmsclient.CreateProjectGroupRequestRoles
 	for _, el := range parsedRoles {
 		if el.RoleSlug == "" {
 			resp.Diagnostics.AddError(
@@ -156,12 +156,12 @@ func (r *ProjectGroupResource) Create(ctx context.Context, req resource.CreateRe
 			)
 			return
 		}
-		roles = append(roles, infisical.CreateProjectGroupRequestRoles{
+		roles = append(roles, kmsclient.CreateProjectGroupRequestRoles{
 			Role: el.RoleSlug,
 		})
 	}
 
-	request := infisical.CreateProjectGroupRequest{
+	request := kmsclient.CreateProjectGroupRequest{
 		ProjectId: plan.ProjectID.ValueString(),
 		Roles:     roles,
 	}
@@ -212,13 +212,13 @@ func (r *ProjectGroupResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	projectGroupMembership, err := r.client.GetProjectGroupMembership(infisical.GetProjectGroupMembershipRequest{
+	projectGroupMembership, err := r.client.GetProjectGroupMembership(kmsclient.GetProjectGroupMembershipRequest{
 		ProjectId: state.ProjectID.ValueString(),
 		GroupId:   state.GroupID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -313,7 +313,7 @@ func (r *ProjectGroupResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	var roles []infisical.UpdateProjectGroupRequestRoles
+	var roles []kmsclient.UpdateProjectGroupRequestRoles
 	for _, el := range parsedRoles {
 		if el.RoleSlug == "" {
 			resp.Diagnostics.AddError(
@@ -322,12 +322,12 @@ func (r *ProjectGroupResource) Update(ctx context.Context, req resource.UpdateRe
 			)
 			return
 		}
-		roles = append(roles, infisical.UpdateProjectGroupRequestRoles{
+		roles = append(roles, kmsclient.UpdateProjectGroupRequestRoles{
 			Role: el.RoleSlug,
 		})
 	}
 
-	_, err = r.client.UpdateProjectGroup(infisical.UpdateProjectGroupRequest{
+	_, err = r.client.UpdateProjectGroup(kmsclient.UpdateProjectGroupRequest{
 		ProjectId: state.ProjectID.ValueString(),
 		GroupId:   state.GroupID.ValueString(),
 		Roles:     roles,
@@ -362,7 +362,7 @@ func (r *ProjectGroupResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	_, err := r.client.DeleteProjectGroup(infisical.DeleteProjectGroupRequest{
+	_, err := r.client.DeleteProjectGroup(kmsclient.DeleteProjectGroupRequest{
 		ProjectId: state.ProjectID.ValueString(),
 		GroupId:   state.GroupID.ValueString(),
 	})

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -43,7 +43,7 @@ func NewKMSKeyResource() resource.Resource {
 }
 
 type kmsKeyResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type kmsKeyResourceModel struct {
@@ -66,7 +66,7 @@ func (r *kmsKeyResource) Metadata(_ context.Context, req resource.MetadataReques
 
 func (r *kmsKeyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage KMS keys in Infisical.",
+		Description: "Create and manage KMS keys in Kms.",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -154,12 +154,12 @@ func (r *kmsKeyResource) Configure(_ context.Context, req resource.ConfigureRequ
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *infisical.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *kmsclient.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
@@ -177,7 +177,7 @@ func (r *kmsKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	createKMSKeyRequest := infisical.CreateKMSKeyRequest{
+	createKMSKeyRequest := kmsclient.CreateKMSKeyRequest{
 		ProjectId:   plan.ProjectId.ValueString(),
 		Name:        plan.Name.ValueString(),
 		Description: plan.Description.ValueString(),
@@ -219,7 +219,7 @@ func (r *kmsKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	} else {
 		if plan.IsDisabled.ValueBool() != kmsKey.Key.IsDisabled {
 			isDisabled := plan.IsDisabled.ValueBool()
-			updateRequest := infisical.UpdateKMSKeyRequest{
+			updateRequest := kmsclient.UpdateKMSKeyRequest{
 				KeyId:      kmsKey.Key.ID,
 				IsDisabled: &isDisabled,
 			}
@@ -249,12 +249,12 @@ func (r *kmsKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	kmsKey, err := r.client.GetKMSKey(infisical.GetKMSKeyRequest{
+	kmsKey, err := r.client.GetKMSKey(kmsclient.GetKMSKeyRequest{
 		KeyId: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -290,7 +290,7 @@ func (r *kmsKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	updateRequest := infisical.UpdateKMSKeyRequest{
+	updateRequest := kmsclient.UpdateKMSKeyRequest{
 		KeyId: state.ID.ValueString(),
 	}
 
@@ -340,7 +340,7 @@ func (r *kmsKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	_, err := r.client.DeleteKMSKey(infisical.DeleteKMSKeyRequest{
+	_, err := r.client.DeleteKMSKey(kmsclient.DeleteKMSKeyRequest{
 		KeyId: state.ID.ValueString(),
 	})
 

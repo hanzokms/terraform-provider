@@ -3,12 +3,12 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmsstrings "github.com/hanzokms/terraform-provider/internal/pkg/strings"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"slices"
 	"strconv"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	infisicalstrings "terraform-provider-infisical/internal/pkg/strings"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -27,7 +27,7 @@ func NewIdentityAzureAuthResource() resource.Resource {
 
 // IdentityAzureAuthResource is the resource implementation.
 type IdentityAzureAuthResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityAzureAuthResourceSourceModel describes the data source data model.
@@ -55,7 +55,7 @@ func (r *IdentityAzureAuthResource) Metadata(_ context.Context, req resource.Met
 // Schema defines the schema for the resource.
 func (r *IdentityAzureAuthResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity azure auth in Infisical.",
+		Description: "Create and manage identity azure auth in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the azure auth",
@@ -73,15 +73,15 @@ func (r *IdentityAzureAuthResource) Schema(_ context.Context, _ resource.SchemaR
 				Required:            true,
 			},
 			"resource_url": schema.StringAttribute{
-				Description:         "The resource URL for the application registered in Azure AD. The value is expected to match the `aud` claim of the access token JWT later used in the login operation against Infisical. Defaault: https://management.azure.com",
-				MarkdownDescription: "The resource URL for the application registered in Azure AD. The value is expected to match the `aud` claim of the access token JWT later used in the login operation against Infisical. See the [resource](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-to-use-vm-token#get-a-token-using-http) parameter for how the audience is set when requesting a JWT access token from the Azure Instance Metadata Service (IMDS) endpoint. In most cases, this value should be `https://management.azure.com/` which is the default",
+				Description:         "The resource URL for the application registered in Azure AD. The value is expected to match the `aud` claim of the access token JWT later used in the login operation against Kms. Defaault: https://management.azure.com",
+				MarkdownDescription: "The resource URL for the application registered in Azure AD. The value is expected to match the `aud` claim of the access token JWT later used in the login operation against Kms. See the [resource](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-to-use-vm-token#get-a-token-using-http) parameter for how the audience is set when requesting a JWT access token from the Azure Instance Metadata Service (IMDS) endpoint. In most cases, this value should be `https://management.azure.com/` which is the default",
 				Computed:            true,
 				Optional:            true,
 				Default:             stringdefault.StaticString("https://management.azure.com"),
 			},
 			"allowed_service_principal_ids": schema.ListAttribute{
 				ElementType: types.StringType,
-				Description: "List of Azure AD service principal IDs that are allowed to authenticate with Infisical",
+				Description: "List of Azure AD service principal IDs that are allowed to authenticate with Kms",
 				Optional:    true,
 				Computed:    true,
 			},
@@ -123,7 +123,7 @@ func (r *IdentityAzureAuthResource) Configure(_ context.Context, req resource.Co
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -137,7 +137,7 @@ func (r *IdentityAzureAuthResource) Configure(_ context.Context, req resource.Co
 	r.client = client
 }
 
-func updateAzureAuthTerraformStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityAzureAuthResourceModel, newIdentityAzureAuth *infisical.IdentityAzureAuth) {
+func updateAzureAuthTerraformStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityAzureAuthResourceModel, newIdentityAzureAuth *kmsclient.IdentityAzureAuth) {
 	plan.AccessTokenMaxTTL = types.Int64Value(newIdentityAzureAuth.AccessTokenMaxTTL)
 	plan.AccessTokenTTL = types.Int64Value(newIdentityAzureAuth.AccessTokenTTL)
 	plan.AccessTokenNumUsesLimit = types.Int64Value(newIdentityAzureAuth.AccessTokenNumUsesLimit)
@@ -167,7 +167,7 @@ func updateAzureAuthTerraformStateByApi(ctx context.Context, diagnose diag.Diagn
 		return
 	}
 
-	plan.AllowedServicePrincipalIDs, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityAzureAuth.AllowedServicePrincipalIDS, ","))
+	plan.AllowedServicePrincipalIDs, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityAzureAuth.AllowedServicePrincipalIDS, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
@@ -194,9 +194,9 @@ func (r *IdentityAzureAuthResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	allowedServicePrincipalIds := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServicePrincipalIDs)
+	allowedServicePrincipalIds := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServicePrincipalIDs)
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
-	newIdentityAzureAuth, err := r.client.CreateIdentityAzureAuth(infisical.CreateIdentityAzureAuthRequest{
+	newIdentityAzureAuth, err := r.client.CreateIdentityAzureAuth(kmsclient.CreateIdentityAzureAuthRequest{
 		IdentityID:                 plan.IdentityID.ValueString(),
 		AccessTokenTTL:             plan.AccessTokenTTL.ValueInt64(),
 		AccessTokenMaxTTL:          plan.AccessTokenMaxTTL.ValueInt64(),
@@ -210,7 +210,7 @@ func (r *IdentityAzureAuthResource) Create(ctx context.Context, req resource.Cre
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating identity azure auth",
-			"Couldn't save azure auth to Infisical, unexpected error: "+err.Error(),
+			"Couldn't save azure auth to Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -244,18 +244,18 @@ func (r *IdentityAzureAuthResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	// Get the latest data from the API
-	identityAzureAuth, err := r.client.GetIdentityAzureAuth(infisical.GetIdentityAzureAuthRequest{
+	identityAzureAuth, err := r.client.GetIdentityAzureAuth(kmsclient.GetIdentityAzureAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
 			resp.Diagnostics.AddError(
 				"Error reading identity azure auth",
-				"Couldn't read identity azure auth from Infisical, unexpected error: "+err.Error(),
+				"Couldn't read identity azure auth from Kms, unexpected error: "+err.Error(),
 			)
 			return
 		}
@@ -293,10 +293,10 @@ func (r *IdentityAzureAuthResource) Update(ctx context.Context, req resource.Upd
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	allowedServicePrincipalIds := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServicePrincipalIDs)
+	allowedServicePrincipalIds := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedServicePrincipalIDs)
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
-	updatedIdentityAzureAuth, err := r.client.UpdateIdentityAzureAuth(infisical.UpdateIdentityAzureAuthRequest{
+	updatedIdentityAzureAuth, err := r.client.UpdateIdentityAzureAuth(kmsclient.UpdateIdentityAzureAuthRequest{
 		IdentityID:                 plan.IdentityID.ValueString(),
 		AccessTokenTrustedIPS:      accessTokenTrustedIps,
 		AccessTokenTTL:             plan.AccessTokenTTL.ValueInt64(),
@@ -310,7 +310,7 @@ func (r *IdentityAzureAuthResource) Update(ctx context.Context, req resource.Upd
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating identity azure auth",
-			"Couldn't update identity azure auth from Infisical, unexpected error: "+err.Error(),
+			"Couldn't update identity azure auth from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -342,14 +342,14 @@ func (r *IdentityAzureAuthResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 
-	_, err := r.client.RevokeIdentityAzureAuth(infisical.RevokeIdentityAzureAuthRequest{
+	_, err := r.client.RevokeIdentityAzureAuth(kmsclient.RevokeIdentityAzureAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting identity azure auth",
-			"Couldn't delete identity azure auth from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete identity azure auth from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -366,12 +366,12 @@ func (r *IdentityAzureAuthResource) ImportState(ctx context.Context, req resourc
 		return
 	}
 
-	identity, err := r.client.GetIdentity(infisical.GetIdentityRequest{
+	identity, err := r.client.GetIdentity(kmsclient.GetIdentityRequest{
 		IdentityID: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Identity not found",
 				"The identity with the given ID was not found",
@@ -379,7 +379,7 @@ func (r *IdentityAzureAuthResource) ImportState(ctx context.Context, req resourc
 		} else {
 			resp.Diagnostics.AddError(
 				"Error importing identity azure auth",
-				"Couldn't read identity azure auth from Infisical, unexpected error: "+err.Error(),
+				"Couldn't read identity azure auth from Kms, unexpected error: "+err.Error(),
 			)
 		}
 		return
@@ -403,14 +403,14 @@ func (r *IdentityAzureAuthResource) ImportState(ctx context.Context, req resourc
 		return
 	}
 
-	identityAzureAuth, err := r.client.GetIdentityAzureAuth(infisical.GetIdentityAzureAuthRequest{
+	identityAzureAuth, err := r.client.GetIdentityAzureAuth(kmsclient.GetIdentityAzureAuthRequest{
 		IdentityID: req.ID,
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error importing identity azure auth",
-			"Couldn't read identity azure auth from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read identity azure auth from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -449,7 +449,7 @@ func (r *IdentityAzureAuthResource) ImportState(ctx context.Context, req resourc
 		return
 	}
 
-	state.AllowedServicePrincipalIDs, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(identityAzureAuth.AllowedServicePrincipalIDS, ","))
+	state.AllowedServicePrincipalIDs, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(identityAzureAuth.AllowedServicePrincipalIDS, ","))
 
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

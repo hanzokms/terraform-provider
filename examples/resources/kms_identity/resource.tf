@@ -1,0 +1,125 @@
+terraform {
+  required_providers {
+    kms = {
+      # version = <latest version>
+      source = "hanzokms/kms"
+    }
+  }
+}
+
+provider "kms" {
+  host = "https://kms.hanzo.ai" # Only required if using self hosted instance of Hanzo KMS, default is https://kms.hanzo.ai
+  auth = {
+    universal = {
+      client_id     = "<machine-identity-client-id>"
+      client_secret = "<machine-identity-client-secret>"
+    }
+  }
+}
+
+# universal authentication identity
+resource "kms_identity" "universal-auth" {
+  name   = "universal-auth"
+  role   = "member"
+  org_id = "<org_id>"
+  metadata = [
+    {
+      key   = "key1",
+      value = "value1"
+    },
+    {
+      key   = "key2",
+      value = "value2"
+    }
+  ]
+}
+
+resource "kms_identity_universal_auth" "ua-auth" {
+  identity_id                 = kms_identity.universal-auth.id
+  access_token_ttl            = 2592000
+  access_token_max_ttl        = 2592000 * 2
+  access_token_num_uses_limit = 3
+}
+
+resource "kms_identity_universal_auth_client_secret" "client-secret" {
+  identity_id = kms_identity.universal-auth.id
+
+  depends_on = [kms_identity_universal_auth.ua-auth]
+}
+
+output "client_secret" {
+  sensitive = true
+  value     = kms_identity_universal_auth_client_secret.client-secret.client_secret
+}
+
+resource "kms_identity" "aws-auth" {
+  name   = "aws-auth"
+  role   = "member"
+  org_id = "<org_id>"
+}
+
+resource "kms_identity_aws_auth" "aws-auth" {
+  identity_id                 = kms_identity.aws-auth.id
+  access_token_ttl            = 2592000
+  access_token_max_ttl        = 2592000 * 2
+  access_token_num_uses_limit = 3
+  allowed_principal_arns      = ["arn:aws:iam::123456789012:user/MyUserName"]
+  allowed_account_ids         = ["123456789012", "123456789013"]
+}
+
+resource "kms_identity" "azure-auth" {
+  name   = "azure-auth"
+  role   = "member"
+  org_id = "<org_id>"
+}
+
+resource "kms_identity_azure_auth" "azure-auth" {
+  identity_id = kms_identity.azure-auth.id
+  tenant_id   = "TENANT_ID"
+}
+
+resource "kms_identity" "gcp-auth" {
+  name   = "gcp-auth"
+  role   = "member"
+  org_id = "<org_id>"
+}
+
+resource "kms_identity_gcp_auth" "gcp-auth" {
+  identity_id = kms_identity.gcp-auth.id
+  type        = "gce"
+}
+
+resource "kms_identity" "k8-auth" {
+  name   = "k8-auth"
+  role   = "member"
+  org_id = "<org_id>"
+}
+
+resource "kms_identity_kubernetes_auth" "k8-auth" {
+  identity_id        = kms_identity.k8-auth.id
+  kubernetes_host    = "http://example.com"
+  token_reviewer_jwt = "ey<example>"
+  allowed_namespaces = ["namespace-a", "namespace-b"]
+}
+
+resource "kms_identity" "token-auth" {
+  name   = "token-auth"
+  role   = "member"
+  org_id = "<org_id>"
+}
+
+resource "kms_identity_token_auth" "token-auth" {
+  identity_id = kms_identity.token-auth.id
+}
+
+resource "kms_identity_token_auth_token" "token-auth-token" {
+  identity_id = kms_identity.token-auth.id
+  name        = "token-auth-token"
+
+  depends_on = [kms_identity_token_auth.token-auth]
+}
+
+output "token-auth-token" {
+  sensitive = true
+  value     = kms_identity_token_auth_token.token-auth-token.token
+}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -20,18 +20,18 @@ func NewSecretDataSource() datasource.DataSource {
 
 // SecretDataSource defines the data source implementation.
 type SecretsDataSource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // ExampleDataSourceModel describes the data source data model.
 type SecretDataSourceModel struct {
-	FolderPath  types.String                      `tfsdk:"folder_path"`
-	WorkspaceId types.String                      `tfsdk:"workspace_id"`
-	EnvSlug     types.String                      `tfsdk:"env_slug"`
-	Secrets     map[string]InfisicalSecretDetails `tfsdk:"secrets"`
+	FolderPath  types.String                `tfsdk:"folder_path"`
+	WorkspaceId types.String                `tfsdk:"workspace_id"`
+	EnvSlug     types.String                `tfsdk:"env_slug"`
+	Secrets     map[string]KmsSecretDetails `tfsdk:"secrets"`
 }
 
-type InfisicalSecretDetails struct {
+type KmsSecretDetails struct {
 	Value      types.String `tfsdk:"value"`
 	Comment    types.String `tfsdk:"comment"`
 	SecretType types.String `tfsdk:"secret_type"`
@@ -43,7 +43,7 @@ func (d *SecretsDataSource) Metadata(ctx context.Context, req datasource.Metadat
 
 func (d *SecretsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Interact with Infisical secrets",
+		Description: "Interact with Kms secrets",
 
 		Attributes: map[string]schema.Attribute{
 			"folder_path": schema.StringAttribute{
@@ -58,7 +58,7 @@ func (d *SecretsDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			},
 
 			"workspace_id": schema.StringAttribute{
-				Description: "The Infisical project ID (Required for Machine Identity auth, and service tokens with multiple scopes)",
+				Description: "The Kms project ID (Required for Machine Identity auth, and service tokens with multiple scopes)",
 				Optional:    true,
 				Computed:    true,
 			},
@@ -93,7 +93,7 @@ func (d *SecretsDataSource) Configure(ctx context.Context, req datasource.Config
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -117,14 +117,14 @@ func (d *SecretsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	if d.client.Config.AuthStrategy == infisical.AuthStrategy.SERVICE_TOKEN {
+	if d.client.Config.AuthStrategy == kmsclient.AuthStrategy.SERVICE_TOKEN {
 
 		plainTextSecrets, _, err := d.client.GetPlainTextSecretsViaServiceToken(data.FolderPath.ValueString(), data.EnvSlug.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Something went wrong while fetching secrets",
-				"If the error is not clear, please get in touch at infisical.com/slack\n\n"+
-					"Infisical Client Error: "+err.Error(),
+				"If the error is not clear, please get in touch at hanzo.ai/slack\n\n"+
+					"Kms Client Error: "+err.Error(),
 			)
 		}
 
@@ -132,18 +132,18 @@ func (d *SecretsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			data.FolderPath = types.StringValue("/")
 		}
 
-		data.Secrets = make(map[string]InfisicalSecretDetails)
+		data.Secrets = make(map[string]KmsSecretDetails)
 
 		for _, secret := range plainTextSecrets {
-			data.Secrets[secret.Key] = InfisicalSecretDetails{Value: types.StringValue(secret.Value), Comment: types.StringValue(secret.Comment), SecretType: types.StringValue(secret.Type)}
+			data.Secrets[secret.Key] = KmsSecretDetails{Value: types.StringValue(secret.Value), Comment: types.StringValue(secret.Comment), SecretType: types.StringValue(secret.Type)}
 		}
 	} else if d.client.Config.IsMachineIdentityAuth {
 		secrets, err := d.client.GetRawSecrets(data.FolderPath.ValueString(), data.EnvSlug.ValueString(), data.WorkspaceId.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Something went wrong while fetching secrets",
-				"If the error is not clear, please get in touch at infisical.com/slack\n\n"+
-					"Infisical Client Error: "+err.Error(),
+				"If the error is not clear, please get in touch at hanzo.ai/slack\n\n"+
+					"Kms Client Error: "+err.Error(),
 			)
 		}
 
@@ -151,16 +151,16 @@ func (d *SecretsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			data.FolderPath = types.StringValue("/")
 		}
 
-		data.Secrets = make(map[string]InfisicalSecretDetails)
+		data.Secrets = make(map[string]KmsSecretDetails)
 
 		for _, secret := range secrets {
-			data.Secrets[secret.SecretKey] = InfisicalSecretDetails{Value: types.StringValue(secret.SecretValue), Comment: types.StringValue(secret.SecretComment), SecretType: types.StringValue(secret.Type)}
+			data.Secrets[secret.SecretKey] = KmsSecretDetails{Value: types.StringValue(secret.SecretValue), Comment: types.StringValue(secret.SecretComment), SecretType: types.StringValue(secret.Type)}
 		}
 
 	} else {
 		resp.Diagnostics.AddError(
 			"Something went wrong while fetching secrets",
-			"Unable to determine authentication strategy. Please report this issue to the Infisical engineers at infisical.com/slack\n\n",
+			"Unable to determine authentication strategy. Please report this issue to the Kms engineers at hanzo.ai/slack\n\n",
 		)
 	}
 

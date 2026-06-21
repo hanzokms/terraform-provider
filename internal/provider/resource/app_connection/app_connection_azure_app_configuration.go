@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -23,24 +23,24 @@ const AzureAppConfigurationAppConnectionClientSecretsMethod = "client-secret"
 
 func NewAppConnectionAzureAppConfigurationResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppAzureAppConfiguration,
+		App:               kmsclient.AppConnectionAppAzureAppConfiguration,
 		AppConnectionName: "Azure App Configuration",
 		ResourceTypeName:  "_app_connection_azure_app_configuration",
 		AllowedMethods:    []string{AzureAppConfigurationAppConnectionClientSecretsMethod},
 		CredentialsAttributes: map[string]schema.Attribute{
 			"tenant_id": schema.StringAttribute{
 				Required:    true,
-				Description: "The Azure Active Directory (AAD) tenant ID. Required for client-secret method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-app-configuration",
+				Description: "The Azure Active Directory (AAD) tenant ID. Required for client-secret method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-app-configuration",
 				Sensitive:   false,
 			},
 			"client_id": schema.StringAttribute{
 				Required:    true,
-				Description: "The Azure application (client) ID. Required for client-secret method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-app-configuration",
+				Description: "The Azure application (client) ID. Required for client-secret method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-app-configuration",
 				Sensitive:   true,
 			},
 			"client_secret": schema.StringAttribute{
 				Required:    true,
-				Description: "The Azure client secret. Required for client-secret method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-app-configuration",
+				Description: "The Azure client secret. Required for client-secret method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-app-configuration",
 				Sensitive:   true,
 			},
 		},

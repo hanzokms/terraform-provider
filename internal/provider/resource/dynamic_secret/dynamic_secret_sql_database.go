@@ -2,9 +2,9 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -46,7 +46,7 @@ type DynamicSecretSqlDatabaseConfigurationModel struct {
 
 func NewDynamicSecretSqlDatabaseResource() resource.Resource {
 	return &DynamicSecretBaseResource{
-		Provider:          infisical.DynamicSecretProviderSQLDatabase,
+		Provider:          kmsclient.DynamicSecretProviderSQLDatabase,
 		ResourceTypeName:  "_dynamic_secret_sql_database",
 		DynamicSecretName: "SQL Database",
 		ConfigurationAttributes: map[string]schema.Attribute{
@@ -183,7 +183,7 @@ func NewDynamicSecretSqlDatabaseResource() resource.Resource {
 			return configurationMap, diags
 		},
 
-		ReadConfigurationFromApi: func(ctx context.Context, dynamicSecret infisical.DynamicSecret, configState types.Object) (types.Object, diag.Diagnostics) {
+		ReadConfigurationFromApi: func(ctx context.Context, dynamicSecret kmsclient.DynamicSecret, configState types.Object) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			// Extract existing config state to preserve user formatting when values are equivalent after trimming
@@ -293,9 +293,9 @@ func NewDynamicSecretSqlDatabaseResource() resource.Resource {
 				caValue = types.StringValue(caVal)
 			}
 
-			creationStatementFinal := infisicaltf.PreserveStringIfTrimmedEqual(creationStatementVal, existingConfig.CreationStatement)
-			revocationStatementFinal := infisicaltf.PreserveStringIfTrimmedEqual(revocationStatementVal, existingConfig.RevocationStatement)
-			renewStatementFinal := infisicaltf.PreserveStringIfTrimmedEqual(renewStatementVal, existingConfig.RenewStatement)
+			creationStatementFinal := kmstf.PreserveStringIfTrimmedEqual(creationStatementVal, existingConfig.CreationStatement)
+			revocationStatementFinal := kmstf.PreserveStringIfTrimmedEqual(revocationStatementVal, existingConfig.RevocationStatement)
+			renewStatementFinal := kmstf.PreserveStringIfTrimmedEqual(renewStatementVal, existingConfig.RenewStatement)
 
 			renewStatementValue := types.StringNull()
 			if renewStatementFinal != "" {

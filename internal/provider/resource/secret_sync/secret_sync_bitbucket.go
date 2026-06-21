@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	"terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	"github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -104,10 +104,10 @@ type SecretSyncBitbucketSyncOptionsModel struct {
 
 func NewSecretSyncBitbucketResource() resource.Resource {
 	return &SecretSyncBaseResource{
-		App:              infisical.SecretSyncAppBitbucket,
+		App:              kmsclient.SecretSyncAppBitbucket,
 		SyncName:         "Bitbucket",
 		ResourceTypeName: "_secret_sync_bitbucket",
-		AppConnection:    infisical.AppConnectionAppBitbucket,
+		AppConnection:    kmsclient.AppConnectionAppBitbucket,
 		DestinationConfigAttributes: map[string]schema.Attribute{
 			"repository_slug": schema.StringAttribute{
 				Required:    true,
@@ -125,12 +125,12 @@ func NewSecretSyncBitbucketResource() resource.Resource {
 		SyncOptionsAttributes: map[string]schema.Attribute{
 			"initial_sync_behavior": schema.StringAttribute{
 				Required:    true,
-				Description: "Specify how Infisical should resolve the initial sync to the destination. Supported options: overwrite-destination",
+				Description: "Specify how Kms should resolve the initial sync to the destination. Supported options: overwrite-destination",
 			},
 			"disable_secret_deletion": schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "When set to true, Infisical will not remove secrets from Bitbucket. Enable this option if you intend to manage some secrets manually outside of Infisical.",
+				Description: "When set to true, Kms will not remove secrets from Bitbucket. Enable this option if you intend to manage some secrets manually outside of Kms.",
 				Default:     booldefault.StaticBool(false),
 			},
 			"key_schema": schema.StringAttribute{
@@ -155,7 +155,7 @@ func NewSecretSyncBitbucketResource() resource.Resource {
 			return syncOptionsMap, nil
 		},
 
-		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			syncOptionsMap := make(map[string]attr.Value)
 
 			initialSyncBehavior, ok := secretSync.SyncOptions["initialSyncBehavior"].(string)
@@ -255,7 +255,7 @@ func NewSecretSyncBitbucketResource() resource.Resource {
 
 			return destinationConfig, diags
 		},
-		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			repositorySlugVal, ok := secretSync.DestinationConfig["repositorySlug"].(string)

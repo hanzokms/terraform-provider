@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -20,7 +20,7 @@ const AppConnectionFlyioAuthMethodAccessToken = "access-token"
 
 func NewAppConnectionFlyioResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppFlyio,
+		App:               kmsclient.AppConnectionAppFlyio,
 		AppConnectionName: "Fly.io",
 		ResourceTypeName:  "_app_connection_flyio",
 		AllowedMethods:    []string{AppConnectionFlyioAuthMethodAccessToken},

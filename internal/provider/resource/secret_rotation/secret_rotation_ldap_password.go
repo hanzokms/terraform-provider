@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -42,10 +42,10 @@ type SecretRotationLdapPasswordTemporaryParametersModel struct {
 
 func NewSecretRotationLdapPasswordResource() resource.Resource {
 	return &SecretRotationBaseResource{
-		Provider:           infisical.SecretRotationProviderLdapPassword,
+		Provider:           kmsclient.SecretRotationProviderLdapPassword,
 		SecretRotationName: "LDAP Password",
 		ResourceTypeName:   "_secret_rotation_ldap_password",
-		AppConnection:      infisical.AppConnectionAppLdap,
+		AppConnection:      kmsclient.AppConnectionAppLdap,
 		ParametersAttributes: map[string]schema.Attribute{
 			"dn": schema.StringAttribute{
 				Required:    true,
@@ -177,7 +177,7 @@ func NewSecretRotationLdapPasswordResource() resource.Resource {
 			return parametersMap, diags
 		},
 
-		ReadParametersFromApi: func(ctx context.Context, secretRotation infisical.SecretRotation) (types.Object, diag.Diagnostics) {
+		ReadParametersFromApi: func(ctx context.Context, secretRotation kmsclient.SecretRotation) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 			parameters := make(map[string]attr.Value)
 			parametersSchema := map[string]attr.Type{
@@ -320,7 +320,7 @@ func NewSecretRotationLdapPasswordResource() resource.Resource {
 			return secretsMappingMap, diags
 		},
 
-		ReadSecretsMappingFromApi: func(ctx context.Context, secretRotation infisical.SecretRotation) (types.Object, diag.Diagnostics) {
+		ReadSecretsMappingFromApi: func(ctx context.Context, secretRotation kmsclient.SecretRotation) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 			secretsMapping := make(map[string]attr.Value)
 			secretsMappingSchema := map[string]attr.Type{
@@ -371,7 +371,7 @@ func NewSecretRotationLdapPasswordResource() resource.Resource {
 			return temporaryParametersMap, diags
 		},
 
-		ReadTemporaryParametersFromApi: func(ctx context.Context, secretRotation infisical.SecretRotation) (types.Object, diag.Diagnostics) {
+		ReadTemporaryParametersFromApi: func(ctx context.Context, secretRotation kmsclient.SecretRotation) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 			temporaryParameters := make(map[string]attr.Value)
 			temporaryParametersSchema := map[string]attr.Type{

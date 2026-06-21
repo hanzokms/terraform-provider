@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -31,7 +31,7 @@ func NewOrgRoleResource() resource.Resource {
 
 // orgRoleResource is the resource implementation.
 type orgRoleResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type OrgRolePermissionEntry struct {
@@ -58,13 +58,13 @@ func (r *orgRoleResource) Metadata(_ context.Context, req resource.MetadataReque
 // Schema defines the schema for the resource.
 func (r *orgRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create custom organization roles & save to Infisical. Only Machine Identity authentication is supported for this data source.",
+		Description: "Create custom organization roles & save to Kms. Only Machine Identity authentication is supported for this data source.",
 		Attributes: map[string]schema.Attribute{
 			"slug": schema.StringAttribute{
 				Description: "The slug for the new role",
 				Required:    true,
 				Validators: []validator.String{
-					infisicaltf.SlugRegexValidator,
+					kmstf.SlugRegexValidator,
 				},
 			},
 			"name": schema.StringAttribute{
@@ -84,7 +84,7 @@ func (r *orgRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"permissions": schema.ListNestedAttribute{
 				Required:    true,
-				Description: "The permissions assigned to the organization role. Refer to the documentation here https://infisical.com/docs/internals/permissions for its usage.",
+				Description: "The permissions assigned to the organization role. Refer to the documentation here https://hanzo.ai/docs/internals/permissions for its usage.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"action": schema.SetAttribute{
@@ -104,12 +104,12 @@ func (r *orgRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						},
 						"conditions": schema.StringAttribute{
 							Optional:    true,
-							Description: "When specified, only matching conditions will be allowed to access given resource. Refer to the documentation in https://infisical.com/docs/internals/permissions#conditions for the complete list of supported properties and operators.",
+							Description: "When specified, only matching conditions will be allowed to access given resource. Refer to the documentation in https://hanzo.ai/docs/internals/permissions#conditions for the complete list of supported properties and operators.",
 							PlanModifiers: []planmodifier.String{
 								pkg.JsonEquivalentModifier{},
 							},
 							Validators: []validator.String{
-								infisicaltf.JsonStringValidator,
+								kmstf.JsonStringValidator,
 							},
 						},
 					},
@@ -125,7 +125,7 @@ func (r *orgRoleResource) Configure(_ context.Context, req resource.ConfigureReq
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -198,7 +198,7 @@ func (r *orgRoleResource) Create(ctx context.Context, req resource.CreateRequest
 		permissions[i] = permMap
 	}
 
-	newOrgRole, err := r.client.CreateOrgRole(infisical.CreateOrgRoleRequest{
+	newOrgRole, err := r.client.CreateOrgRole(kmsclient.CreateOrgRoleRequest{
 		Slug:        plan.Slug.ValueString(),
 		Name:        plan.Name.ValueString(),
 		Description: plan.Description.ValueString(),
@@ -208,7 +208,7 @@ func (r *orgRoleResource) Create(ctx context.Context, req resource.CreateRequest
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating organization role",
-			"Couldn't save organization role to Infisical, unexpected error: "+err.Error(),
+			"Couldn't save organization role to Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -240,18 +240,18 @@ func (r *orgRoleResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	orgRole, err := r.client.GetOrgRoleById(infisical.GetOrgRoleByIdRequest{
+	orgRole, err := r.client.GetOrgRoleById(kmsclient.GetOrgRoleByIdRequest{
 		RoleId: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Error reading organization role",
-			"Couldn't read organization role from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read organization role from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -386,7 +386,7 @@ func (r *orgRoleResource) Update(ctx context.Context, req resource.UpdateRequest
 		permissions[i] = permMap
 	}
 
-	_, err := r.client.UpdateOrgRole(infisical.UpdateOrgRoleRequest{
+	_, err := r.client.UpdateOrgRole(kmsclient.UpdateOrgRoleRequest{
 		RoleId:      state.ID.ValueString(),
 		Slug:        plan.Slug.ValueString(),
 		Name:        plan.Name.ValueString(),
@@ -397,7 +397,7 @@ func (r *orgRoleResource) Update(ctx context.Context, req resource.UpdateRequest
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating organization role",
-			"Couldn't update organization role from Infisical, unexpected error: "+err.Error(),
+			"Couldn't update organization role from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -427,14 +427,14 @@ func (r *orgRoleResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	_, err := r.client.DeleteOrgRole(infisical.DeleteOrgRoleRequest{
+	_, err := r.client.DeleteOrgRole(kmsclient.DeleteOrgRoleRequest{
 		RoleId: state.ID.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting organization role",
-			"Couldn't delete organization role from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete organization role from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -450,12 +450,12 @@ func (r *orgRoleResource) ImportState(ctx context.Context, req resource.ImportSt
 		return
 	}
 
-	orgRole, err := r.client.GetOrgRoleById(infisical.GetOrgRoleByIdRequest{
+	orgRole, err := r.client.GetOrgRoleById(kmsclient.GetOrgRoleByIdRequest{
 		RoleId: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Organization role not found",
 				"The organization role with the given ID was not found",
@@ -463,7 +463,7 @@ func (r *orgRoleResource) ImportState(ctx context.Context, req resource.ImportSt
 		} else {
 			resp.Diagnostics.AddError(
 				"Error fetching organization role",
-				"Couldn't fetch organization role from Infisical, unexpected error: "+err.Error(),
+				"Couldn't fetch organization role from Kms, unexpected error: "+err.Error(),
 			)
 		}
 		return

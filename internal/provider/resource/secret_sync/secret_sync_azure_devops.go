@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -25,10 +25,10 @@ type SecretSyncAzureDevOpsSyncOptionsModel struct {
 
 func NewSecretSyncAzureDevOpsResource() resource.Resource {
 	return &SecretSyncBaseResource{
-		App:              infisical.SecretSyncAppAzureDevOps,
+		App:              kmsclient.SecretSyncAppAzureDevOps,
 		SyncName:         "Azure DevOps",
 		ResourceTypeName: "_secret_sync_azure_devops",
-		AppConnection:    infisical.AppConnectionAppAzureDevOps,
+		AppConnection:    kmsclient.AppConnectionAppAzureDevOps,
 		DestinationConfigAttributes: map[string]schema.Attribute{
 			"devops_project_id": schema.StringAttribute{
 				Required:    true,
@@ -39,7 +39,7 @@ func NewSecretSyncAzureDevOpsResource() resource.Resource {
 			"disable_secret_deletion": schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "When set to true, Infisical will not remove secrets from Azure DevOps. Enable this option if you intend to manage some secrets manually outside of Infisical.",
+				Description: "When set to true, Kms will not remove secrets from Azure DevOps. Enable this option if you intend to manage some secrets manually outside of Kms.",
 				Default:     booldefault.StaticBool(false),
 			},
 			"key_schema": schema.StringAttribute{
@@ -79,7 +79,7 @@ func NewSecretSyncAzureDevOpsResource() resource.Resource {
 			return syncOptionsMap, nil
 		},
 
-		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 
 			disableSecretDeletion, ok := secretSync.SyncOptions["disableSecretDeletion"].(bool)
 			if !ok {
@@ -129,7 +129,7 @@ func NewSecretSyncAzureDevOpsResource() resource.Resource {
 
 			return destinationConfig, diags
 		},
-		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			devopsProjectIdVal, ok := secretSync.DestinationConfig["devopsProjectId"].(string)

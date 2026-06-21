@@ -1,8 +1,8 @@
-package infisicalclient
+package kmsclient
 
 import (
 	"fmt"
-	"terraform-provider-infisical/internal/errors"
+	"github.com/hanzokms/terraform-provider/internal/errors"
 )
 
 // Enum containing the possible values for the `type` field in the CreateIntegrationAuthRequest.

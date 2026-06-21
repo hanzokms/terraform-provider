@@ -50,7 +50,7 @@ func EncryptSymmetric(plaintext []byte, key []byte) (result SymmetricEncryptionR
 		return SymmetricEncryptionResult{}, err
 	}
 
-	aesgcm, err := cipher.NewGCMWithNonceSize(block, 16) // default is 12, 16 because https://github.com/Infisical/infisical/blob/bea0ff6e05a4de73a5db625d4ae181a015b50855/backend/src/utils/aes-gcm.ts#L4
+	aesgcm, err := cipher.NewGCMWithNonceSize(block, 16) // default is 12, 16 because https://github.com/hanzokms/kms/blob/bea0ff6e05a4de73a5db625d4ae181a015b50855/backend/src/utils/aes-gcm.ts#L4
 	if err != nil {
 		return SymmetricEncryptionResult{}, err
 	}

@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -21,7 +21,7 @@ const CloudflareAppConnectionApiTokenMethod = "api-token"
 
 func NewAppConnectionCloudflareResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppCloudflare,
+		App:               kmsclient.AppConnectionAppCloudflare,
 		AppConnectionName: "Cloudflare",
 		ResourceTypeName:  "_app_connection_cloudflare",
 		AllowedMethods:    []string{CloudflareAppConnectionApiTokenMethod},

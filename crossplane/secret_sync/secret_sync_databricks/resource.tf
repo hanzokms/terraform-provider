@@ -1,14 +1,14 @@
 terraform {
   required_providers {
-    infisical = {
+    kms = {
       # version = <latest version>
-      source = "infisical/infisical"
+      source = "hanzokms/kms"
     }
   }
 }
 
-provider "infisical" {
-  host = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+provider "kms" {
+  host = "https://kms.hanzo.ai" # Only required if using self hosted instance of Hanzo KMS, default is https://kms.hanzo.ai
   auth = {
     universal = {
       client_id     = "<machine-identity-client-id>"
@@ -17,13 +17,13 @@ provider "infisical" {
   }
 }
 
-resource "infisical_secret_sync_databricks" "example" {
+resource "kms_secret_sync_databricks" "example" {
   name          = "databricks-secret-sync"
   description   = "Sync secrets to Databricks secret scope"
-  project_id    = "<your-infisical-project-id>"
+  project_id    = "<your-kms-project-id>"
   connection_id = "<app-connection-id>" # The ID of your Databricks App Connection
   environment   = "<env-slug>"
-  secret_path   = "<infisical-secret-path>"
+  secret_path   = "<kms-secret-path>"
 
   auto_sync_enabled = true
 

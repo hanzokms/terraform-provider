@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -21,7 +21,7 @@ func NewProjectSecretTagResource() resource.Resource {
 
 // projectSecretTagResource is the resource implementation.
 type projectSecretTagResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // projectSecretTagResourceSourceModel describes the data source data model.
@@ -41,13 +41,13 @@ func (r *projectSecretTagResource) Metadata(_ context.Context, req resource.Meta
 // Schema defines the schema for the resource.
 func (r *projectSecretTagResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create secret tag & save to Infisical.",
+		Description: "Create secret tag & save to Kms.",
 		Attributes: map[string]schema.Attribute{
 			"slug": schema.StringAttribute{
 				Description: "The slug for the new tag",
 				Required:    true,
 				Validators: []validator.String{
-					infisicaltf.SlugRegexValidator,
+					kmstf.SlugRegexValidator,
 				},
 			},
 			"name": schema.StringAttribute{
@@ -77,7 +77,7 @@ func (r *projectSecretTagResource) Configure(_ context.Context, req resource.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -109,7 +109,7 @@ func (r *projectSecretTagResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	newProjectSecretTag, err := r.client.CreateProjectTag(infisical.CreateProjectTagRequest{
+	newProjectSecretTag, err := r.client.CreateProjectTag(kmsclient.CreateProjectTagRequest{
 		ProjectID: plan.ProjectID.ValueString(),
 		Slug:      plan.Slug.ValueString(),
 		Name:      plan.Name.ValueString(),
@@ -153,13 +153,13 @@ func (r *projectSecretTagResource) Read(ctx context.Context, req resource.ReadRe
 	}
 
 	// Get the latest data from the API
-	secretTag, err := r.client.GetProjectTagByID(infisical.GetProjectTagByIDRequest{
+	secretTag, err := r.client.GetProjectTagByID(kmsclient.GetProjectTagByIDRequest{
 		ProjectID: state.ProjectID.ValueString(),
 		TagID:     state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -206,7 +206,7 @@ func (r *projectSecretTagResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	_, err := r.client.UpdateProjectTag(infisical.UpdateProjectTagRequest{
+	_, err := r.client.UpdateProjectTag(kmsclient.UpdateProjectTagRequest{
 		ProjectID: plan.ProjectID.ValueString(),
 		Slug:      plan.Slug.ValueString(),
 		Name:      plan.Name.ValueString(),
@@ -248,7 +248,7 @@ func (r *projectSecretTagResource) Delete(ctx context.Context, req resource.Dele
 		return
 	}
 
-	_, err := r.client.DeleteProjectTag(infisical.DeleteProjectTagRequest{
+	_, err := r.client.DeleteProjectTag(kmsclient.DeleteProjectTagRequest{
 		ProjectID: state.ProjectID.ValueString(),
 		TagID:     state.ID.ValueString(),
 	})

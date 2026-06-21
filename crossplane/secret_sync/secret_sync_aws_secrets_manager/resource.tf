@@ -1,14 +1,14 @@
 terraform {
   required_providers {
-    infisical = {
+    kms = {
       # version = <latest version>
-      source = "infisical/infisical"
+      source = "hanzokms/kms"
     }
   }
 }
 
-provider "infisical" {
-  host = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+provider "kms" {
+  host = "https://kms.hanzo.ai" # Only required if using self hosted instance of Hanzo KMS, default is https://kms.hanzo.ai
   auth = {
     universal = {
       client_id     = "<machine-identity-client-id>"
@@ -17,7 +17,7 @@ provider "infisical" {
   }
 }
 
-resource "infisical_secret_sync_aws_secrets_manager" "aws-secrets-manager-secret-sync" {
+resource "kms_secret_sync_aws_secrets_manager" "aws-secrets-manager-secret-sync" {
   name          = "aws-secrets-manager-secret-sync-demo"
   description   = "Demo of AWS Secrets Manager secret sync"
   project_id    = "<project-id>"

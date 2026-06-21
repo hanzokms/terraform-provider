@@ -2,8 +2,8 @@ package resource
 
 import (
 	"context"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -28,7 +28,7 @@ const AppConnectionLdapAuthMethodSimpleBind = "simple-bind"
 
 func NewAppConnectionLdapResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppLdap,
+		App:               kmsclient.AppConnectionAppLdap,
 		AppConnectionName: "LDAP",
 		ResourceTypeName:  "_app_connection_ldap",
 		AllowedMethods:    []string{AppConnectionLdapAuthMethodSimpleBind},

@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -20,7 +20,7 @@ func NewIdentityUniversalAuthClientSecretResource() resource.Resource {
 
 // IdentityUniversalAuthClientSecretResource is the resource implementation.
 type IdentityUniversalAuthClientSecretResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityUniversalAuthClientSecretResourceSourceModel describes the data source data model.
@@ -45,7 +45,7 @@ func (r *IdentityUniversalAuthClientSecretResource) Metadata(_ context.Context, 
 // Schema defines the schema for the resource.
 func (r *IdentityUniversalAuthClientSecretResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity universal auth client secret in Infisical.",
+		Description: "Create and manage identity universal auth client secret in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the universal auth client secret",
@@ -104,7 +104,7 @@ func (r *IdentityUniversalAuthClientSecretResource) Configure(_ context.Context,
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -136,7 +136,7 @@ func (r *IdentityUniversalAuthClientSecretResource) Create(ctx context.Context, 
 		return
 	}
 
-	universalAuth, err := r.client.GetIdentityUniversalAuth(infisical.GetIdentityUniversalAuthRequest{
+	universalAuth, err := r.client.GetIdentityUniversalAuth(kmsclient.GetIdentityUniversalAuthRequest{
 		IdentityID: plan.IdentityID.ValueString(),
 	})
 	if err != nil {
@@ -147,7 +147,7 @@ func (r *IdentityUniversalAuthClientSecretResource) Create(ctx context.Context, 
 		return
 	}
 
-	newIdentityUniversalAuthClientSecret, err := r.client.CreateIdentityUniversalAuthClientSecret(infisical.CreateIdentityUniversalAuthClientSecretRequest{
+	newIdentityUniversalAuthClientSecret, err := r.client.CreateIdentityUniversalAuthClientSecret(kmsclient.CreateIdentityUniversalAuthClientSecretRequest{
 		IdentityID:   plan.IdentityID.ValueString(),
 		Description:  plan.Description.ValueString(),
 		NumUsesLimit: plan.NumberOfUsesLimit.ValueInt64(),
@@ -197,13 +197,13 @@ func (r *IdentityUniversalAuthClientSecretResource) Read(ctx context.Context, re
 	}
 
 	// Get the latest data from the API
-	identityUniversalAuthClientSecretData, err := r.client.GetIdentityUniversalAuthClientSecret(infisical.GetIdentityUniversalAuthClientSecretRequest{
+	identityUniversalAuthClientSecretData, err := r.client.GetIdentityUniversalAuthClientSecret(kmsclient.GetIdentityUniversalAuthClientSecretRequest{
 		IdentityID:     state.IdentityID.ValueString(),
 		ClientSecretID: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -255,7 +255,7 @@ func (r *IdentityUniversalAuthClientSecretResource) Delete(ctx context.Context, 
 		return
 	}
 
-	_, err := r.client.RevokeIdentityUniversalAuthClientSecret(infisical.RevokeIdentityUniversalAuthClientSecretRequest{
+	_, err := r.client.RevokeIdentityUniversalAuthClientSecret(kmsclient.RevokeIdentityUniversalAuthClientSecretRequest{
 		IdentityID:     state.IdentityID.ValueString(),
 		ClientSecretID: state.ID.ValueString(),
 	})

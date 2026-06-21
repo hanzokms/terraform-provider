@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -20,7 +20,7 @@ func NewSecretTagDataSource() datasource.DataSource {
 
 // SecretDataSource defines the data source implementation.
 type SecretTagsDataSource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // ExampleDataSourceModel describes the data source data model.
@@ -38,7 +38,7 @@ func (d *SecretTagsDataSource) Metadata(ctx context.Context, req datasource.Meta
 
 func (d *SecretTagsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Interact with Infisical secretTag secret tag.",
+		Description: "Interact with Kms secretTag secret tag.",
 		Attributes: map[string]schema.Attribute{
 			"slug": schema.StringAttribute{
 				Description: "The slug of the tag to fetch",
@@ -71,7 +71,7 @@ func (d *SecretTagsDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -104,15 +104,15 @@ func (d *SecretTagsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	secretTag, err := d.client.GetProjectTagBySlug(infisical.GetProjectTagBySlugRequest{
+	secretTag, err := d.client.GetProjectTagBySlug(kmsclient.GetProjectTagBySlugRequest{
 		TagSlug:   data.Slug.ValueString(),
 		ProjectID: data.ProjectID.ValueString(),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Something went wrong while fetching the secret tag",
-			"If the error is not clear, please get in touch at infisical.com/slack\n\n"+
-				"Infisical Client Error: "+err.Error(),
+			"If the error is not clear, please get in touch at hanzo.ai/slack\n\n"+
+				"Kms Client Error: "+err.Error(),
 		)
 	}
 

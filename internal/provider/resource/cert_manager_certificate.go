@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
@@ -50,7 +50,7 @@ func NewCertManagerCertificateResource() resource.Resource {
 }
 
 type certManagerCertificateResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type certManagerCertificateResourceModel struct {
@@ -86,7 +86,7 @@ func (r *certManagerCertificateResource) Metadata(_ context.Context, req resourc
 
 func (r *certManagerCertificateResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Request and manage certificates from Infisical certificate profiles. Supports both CSR-based and direct field requests. The resource will poll until the certificate is issued or a timeout is reached. Only Machine Identity authentication is supported for this resource.",
+		Description: "Request and manage certificates from Kms certificate profiles. Supports both CSR-based and direct field requests. The resource will poll until the certificate is issued or a timeout is reached. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"profile_id": schema.StringAttribute{
 				Description: "The ID of the certificate profile to use for issuance",
@@ -266,11 +266,11 @@ func (r *certManagerCertificateResource) Configure(_ context.Context, req resour
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *infisical.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *kmsclient.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -310,7 +310,7 @@ func (r *certManagerCertificateResource) Create(ctx context.Context, req resourc
 		timeoutSeconds = plan.TimeoutSeconds.ValueInt64()
 	}
 
-	certRequest := infisical.RequestCertificateRequest{
+	certRequest := kmsclient.RequestCertificateRequest{
 		ProfileId: plan.ProfileId.ValueString(),
 	}
 
@@ -321,7 +321,7 @@ func (r *certManagerCertificateResource) Create(ctx context.Context, req resourc
 	}
 
 	hasAttributes := false
-	attributes := infisical.CertificateAttributes{}
+	attributes := kmsclient.CertificateAttributes{}
 
 	if !plan.CommonName.IsNull() && !plan.CommonName.IsUnknown() {
 		attributes.CommonName = plan.CommonName.ValueString()
@@ -359,9 +359,9 @@ func (r *certManagerCertificateResource) Create(ctx context.Context, req resourc
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		altNames := make([]infisical.CertificateAltName, 0, len(altNamesStr))
+		altNames := make([]kmsclient.CertificateAltName, 0, len(altNamesStr))
 		for _, altName := range altNamesStr {
-			altNames = append(altNames, infisical.CertificateAltName{
+			altNames = append(altNames, kmsclient.CertificateAltName{
 				Type:  "dns_name",
 				Value: altName,
 			})
@@ -434,7 +434,7 @@ func (r *certManagerCertificateResource) Create(ctx context.Context, req resourc
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (r *certManagerCertificateResource) populatePlanFromImmediateResponse(ctx context.Context, plan *certManagerCertificateResourceModel, certResponse infisical.CertificateResponse) {
+func (r *certManagerCertificateResource) populatePlanFromImmediateResponse(ctx context.Context, plan *certManagerCertificateResourceModel, certResponse kmsclient.CertificateResponse) {
 	plan.Id = types.StringValue(certResponse.CertificateId)
 	plan.Status = types.StringValue("issued")
 
@@ -466,7 +466,7 @@ func (r *certManagerCertificateResource) populatePlanFromImmediateResponse(ctx c
 }
 
 func (r *certManagerCertificateResource) populateCertificateDetails(ctx context.Context, plan *certManagerCertificateResourceModel, certificateId string) {
-	certDetails, err := r.client.GetCertificate(infisical.GetCertificateRequest{
+	certDetails, err := r.client.GetCertificate(kmsclient.GetCertificateRequest{
 		CertificateId: certificateId,
 	})
 	if err != nil {
@@ -562,11 +562,11 @@ func (r *certManagerCertificateResource) pollCertificateRequest(ctx context.Cont
 			return
 		}
 
-		statusResponse, err := r.client.GetCertificateRequestStatus(infisical.GetCertificateRequestStatusRequest{
+		statusResponse, err := r.client.GetCertificateRequestStatus(kmsclient.GetCertificateRequestStatusRequest{
 			RequestId: certificateRequestId,
 		})
 		if err != nil {
-			if err == infisical.ErrNotFound {
+			if err == kmsclient.ErrNotFound {
 				select {
 				case <-ctx.Done():
 					resp.Diagnostics.AddError("Operation cancelled", ctx.Err().Error())
@@ -637,7 +637,7 @@ func (r *certManagerCertificateResource) nextBackoffInterval(current, maxInterva
 	return next
 }
 
-func (r *certManagerCertificateResource) handleIssuedCertificate(ctx context.Context, plan *certManagerCertificateResourceModel, statusResponse *infisical.GetCertificateRequestStatusResponse) {
+func (r *certManagerCertificateResource) handleIssuedCertificate(ctx context.Context, plan *certManagerCertificateResourceModel, statusResponse *kmsclient.GetCertificateRequestStatusResponse) {
 	plan.Status = types.StringValue("issued")
 
 	certificateId := ""
@@ -691,11 +691,11 @@ func (r *certManagerCertificateResource) Read(ctx context.Context, req resource.
 		return
 	}
 
-	certResponse, err := r.client.GetCertificate(infisical.GetCertificateRequest{
+	certResponse, err := r.client.GetCertificate(kmsclient.GetCertificateRequest{
 		CertificateId: state.Id.ValueString(),
 	})
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -728,7 +728,7 @@ func (r *certManagerCertificateResource) Update(ctx context.Context, req resourc
 }
 
 func (r *certManagerCertificateResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	// Certificates cannot be deleted from Infisical. Only removed from state.
+	// Certificates cannot be deleted from Kms. Only removed from state.
 }
 
 func (r *certManagerCertificateResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

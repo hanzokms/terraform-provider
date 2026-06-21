@@ -1,8 +1,8 @@
-package infisicalclient
+package kmsclient
 
 import (
+	"github.com/hanzokms/terraform-provider/internal/errors"
 	"net/http"
-	"terraform-provider-infisical/internal/errors"
 )
 
 type SecretRotationProvider string

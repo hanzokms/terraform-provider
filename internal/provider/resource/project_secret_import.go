@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var notFoundErr *infisical.NotFoundError
+var notFoundErr *kmsclient.NotFoundError
 
 // NewProjectSecretImportResource is a helper function to simplify the provider implementation.
 func NewProjectSecretImportResource() resource.Resource {
@@ -24,7 +24,7 @@ func NewProjectSecretImportResource() resource.Resource {
 
 // projectSecretImportResource is the resource implementation.
 type projectSecretImportResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // projectSecretImportResourceModel describes the data source data model.
@@ -46,7 +46,7 @@ func (r *projectSecretImportResource) Metadata(_ context.Context, req resource.M
 // Schema defines the schema for the resource.
 func (r *projectSecretImportResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create secret import & save to Infisical.",
+		Description: "Create secret import & save to Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the secret import",
@@ -54,7 +54,7 @@ func (r *projectSecretImportResource) Schema(_ context.Context, _ resource.Schem
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"project_id": schema.StringAttribute{
-				Description:   "The Infisical project ID",
+				Description:   "The Kms project ID",
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -93,7 +93,7 @@ func (r *projectSecretImportResource) Configure(_ context.Context, req resource.
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -125,7 +125,7 @@ func (r *projectSecretImportResource) Create(ctx context.Context, req resource.C
 		return
 	}
 
-	newProjectSecretImport, err := r.client.CreateSecretImport(infisical.CreateSecretImportRequest{
+	newProjectSecretImport, err := r.client.CreateSecretImport(kmsclient.CreateSecretImportRequest{
 		ProjectID:     plan.ProjectID.ValueString(),
 		Environment:   plan.EnvironmentSlug.ValueString(),
 		SecretPath:    plan.SecretPath.ValueString(),
@@ -175,7 +175,7 @@ func (r *projectSecretImportResource) Read(ctx context.Context, req resource.Rea
 	}
 
 	// Get the latest data from the API
-	_, err := r.client.GetSecretImport(infisical.GetSecretImportRequest{
+	_, err := r.client.GetSecretImport(kmsclient.GetSecretImportRequest{
 		ID:          state.ID.ValueString(),
 		ProjectID:   state.ProjectID.ValueString(),
 		Environment: state.EnvironmentSlug.ValueString(),
@@ -219,7 +219,7 @@ func (r *projectSecretImportResource) Update(ctx context.Context, req resource.U
 		return
 	}
 
-	_, err := r.client.UpdateSecretImport(infisical.UpdateSecretImportRequest{
+	_, err := r.client.UpdateSecretImport(kmsclient.UpdateSecretImportRequest{
 		ProjectID:   plan.ProjectID.ValueString(),
 		ID:          plan.ID.ValueString(),
 		Environment: plan.EnvironmentSlug.ValueString(),
@@ -264,7 +264,7 @@ func (r *projectSecretImportResource) Delete(ctx context.Context, req resource.D
 		return
 	}
 
-	_, err := r.client.DeleteSecretImport(infisical.DeleteSecretImportRequest{
+	_, err := r.client.DeleteSecretImport(kmsclient.DeleteSecretImportRequest{
 		ID:          state.ID.ValueString(),
 		ProjectID:   state.ProjectID.ValueString(),
 		Environment: state.EnvironmentSlug.ValueString(),
@@ -286,12 +286,12 @@ func (r *projectSecretImportResource) Delete(ctx context.Context, req resource.D
 }
 
 func (r *projectSecretImportResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	secretImport, err := r.client.GetSecretImportByID(infisical.GetSecretImportByIDRequest{
+	secretImport, err := r.client.GetSecretImportByID(kmsclient.GetSecretImportByIDRequest{
 		ID: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Secret Import not found",
 				"The secret import with the given ID was not found",

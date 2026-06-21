@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -19,14 +19,14 @@ type AppConnectionGcpCredentialsModel struct {
 
 func NewAppConnectionGcpResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppGCP,
+		App:               kmsclient.AppConnectionAppGCP,
 		AppConnectionName: "GCP",
 		ResourceTypeName:  "_app_connection_gcp",
 		AllowedMethods:    []string{"service-account-impersonation"},
 		CredentialsAttributes: map[string]schema.Attribute{
 			"service_account_email": schema.StringAttribute{
 				Optional:    true,
-				Description: "The service account email to connect with GCP. The service account ID (the part of the email before '@') must be suffixed with the first two sections of your organization ID e.g. service-account-df92581a-0fe9@my-project.iam.gserviceaccount.com. For more details, refer to the documentation here https://infisical.com/docs/integrations/app-connections/gcp#configure-service-account-for-infisical",
+				Description: "The service account email to connect with GCP. The service account ID (the part of the email before '@') must be suffixed with the first two sections of your organization ID e.g. service-account-df92581a-0fe9@my-project.iam.gserviceaccount.com. For more details, refer to the documentation here https://hanzo.ai/docs/integrations/app-connections/gcp#configure-service-account-for-kms",
 				Sensitive:   true,
 			},
 		},

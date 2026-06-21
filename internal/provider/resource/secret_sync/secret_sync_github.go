@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	"terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	"github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -130,10 +130,10 @@ type SecretSyncGithubSyncOptionsModel struct {
 
 func NewSecretSyncGithubResource() resource.Resource {
 	return &SecretSyncBaseResource{
-		App:              infisical.SecretSyncAppGithub,
+		App:              kmsclient.SecretSyncAppGithub,
 		SyncName:         "Github",
 		ResourceTypeName: "_secret_sync_github",
-		AppConnection:    infisical.AppConnectionAppGithub,
+		AppConnection:    kmsclient.AppConnectionAppGithub,
 		DestinationConfigAttributes: map[string]schema.Attribute{
 			"scope": schema.StringAttribute{
 				Required:    true,
@@ -141,11 +141,11 @@ func NewSecretSyncGithubResource() resource.Resource {
 			},
 			"repository_owner": schema.StringAttribute{
 				Optional:    true,
-				Description: "The owner of the Github repository, required if scope is `repository`, `repository-environment`, or `organization`. This is the organization name, or the username for personal repositories. As an example if you have a repository called Infisical/go-sdk, you would only need to provide `Infisical` here.",
+				Description: "The owner of the Github repository, required if scope is `repository`, `repository-environment`, or `organization`. This is the organization name, or the username for personal repositories. As an example if you have a repository called Kms/go-sdk, you would only need to provide `Kms` here.",
 			},
 			"repository_name": schema.StringAttribute{
 				Optional:    true,
-				Description: "The repository to sync the secrets to, required if scope is `repository` or `repository-environment`. This is only the name of the repository, without the repository owner included. As an example if you have a repository called Infisical/go-sdk, you would only need to provide `go-sdk` here.",
+				Description: "The repository to sync the secrets to, required if scope is `repository` or `repository-environment`. This is only the name of the repository, without the repository owner included. As an example if you have a repository called Kms/go-sdk, you would only need to provide `go-sdk` here.",
 			},
 			"visibility": schema.StringAttribute{
 				Optional:    true,
@@ -164,12 +164,12 @@ func NewSecretSyncGithubResource() resource.Resource {
 		SyncOptionsAttributes: map[string]schema.Attribute{
 			"initial_sync_behavior": schema.StringAttribute{
 				Required:    true,
-				Description: "Specify how Infisical should resolve the initial sync to the destination. Supported options: overwrite-destination",
+				Description: "Specify how Kms should resolve the initial sync to the destination. Supported options: overwrite-destination",
 			},
 			"disable_secret_deletion": schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "When set to true, Infisical will not remove secrets from Github. Enable this option if you intend to manage some secrets manually outside of Infisical.",
+				Description: "When set to true, Kms will not remove secrets from Github. Enable this option if you intend to manage some secrets manually outside of Kms.",
 				Default:     booldefault.StaticBool(false),
 			},
 			"key_schema": schema.StringAttribute{
@@ -194,7 +194,7 @@ func NewSecretSyncGithubResource() resource.Resource {
 			return syncOptionsMap, nil
 		},
 
-		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			syncOptionsMap := make(map[string]attr.Value)
 
 			initialSyncBehavior, ok := secretSync.SyncOptions["initialSyncBehavior"].(string)
@@ -370,7 +370,7 @@ func NewSecretSyncGithubResource() resource.Resource {
 
 			return destinationConfig, diags
 		},
-		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			scopeVal, ok := secretSync.DestinationConfig["scope"].(string)

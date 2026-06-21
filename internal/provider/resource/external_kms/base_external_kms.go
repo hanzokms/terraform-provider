@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -15,10 +15,10 @@ import (
 
 // ExternalKmsBaseResource is the resource implementation.
 type ExternalKmsBaseResource struct {
-	Provider                           infisical.ExternalKmsProvider // used for identifying external KMS route
+	Provider                           kmsclient.ExternalKmsProvider // used for identifying external KMS route
 	ResourceTypeName                   string                        // terraform resource name suffix
 	ExternalKmsProviderName            string                        // complete descriptive name of the external KMS provider
-	client                             *infisical.Client
+	client                             *kmsclient.Client
 	ConfigurationAttributes            map[string]schema.Attribute
 	ReadConfigurationForCreateFromPlan func(ctx context.Context, plan ExternalKmsBaseResourceModel) (map[string]any, diag.Diagnostics)
 	ReadConfigurationForUpdateFromPlan func(ctx context.Context, plan ExternalKmsBaseResourceModel, state ExternalKmsBaseResourceModel) (map[string]any, diag.Diagnostics)
@@ -74,7 +74,7 @@ func (r *ExternalKmsBaseResource) Configure(_ context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -112,7 +112,7 @@ func (r *ExternalKmsBaseResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	kms, err := r.client.CreateExternalKms(infisical.CreateExternalKmsRequest{
+	kms, err := r.client.CreateExternalKms(kmsclient.CreateExternalKmsRequest{
 		Provider:      r.Provider,
 		Name:          plan.Name.ValueString(),
 		Description:   plan.Description.ValueString(),
@@ -155,13 +155,13 @@ func (r *ExternalKmsBaseResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	kms, err := r.client.GetExternalKmsById(infisical.GetExternalKmsByIdRequest{
+	kms, err := r.client.GetExternalKmsById(kmsclient.GetExternalKmsByIdRequest{
 		Provider: r.Provider,
 		ID:       state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -231,7 +231,7 @@ func (r *ExternalKmsBaseResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	externalKms, err := r.client.UpdateExternalKms(infisical.UpdateExternalKmsRequest{
+	externalKms, err := r.client.UpdateExternalKms(kmsclient.UpdateExternalKmsRequest{
 		ID:            state.ID.ValueString(),
 		Provider:      r.Provider,
 		Name:          plan.Name.ValueString(),
@@ -272,7 +272,7 @@ func (r *ExternalKmsBaseResource) Delete(ctx context.Context, req resource.Delet
 		return
 	}
 
-	_, err := r.client.DeleteExternalKms(infisical.DeleteExternalKmsRequest{
+	_, err := r.client.DeleteExternalKms(kmsclient.DeleteExternalKmsRequest{
 		Provider: r.Provider,
 		ID:       state.ID.ValueString(),
 	})
@@ -280,7 +280,7 @@ func (r *ExternalKmsBaseResource) Delete(ctx context.Context, req resource.Delet
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting external KMS",
-			"Couldn't delete external KMS from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete external KMS from Kms, unexpected error: "+err.Error(),
 		)
 	}
 }

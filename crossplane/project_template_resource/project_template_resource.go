@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"reflect"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -24,7 +24,7 @@ var (
 )
 
 type ProjectTemplateResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type PermissionModel struct {
@@ -73,7 +73,7 @@ func (r *ProjectTemplateResource) Metadata(_ context.Context, req resource.Metad
 
 func (r *ProjectTemplateResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create project templates & save to Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create project templates & save to Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The ID of the project template",
@@ -91,7 +91,7 @@ func (r *ProjectTemplateResource) Schema(_ context.Context, _ resource.SchemaReq
 				Optional:    true,
 			},
 			"type": schema.StringAttribute{
-				Description: "The type of the project template. Refer to the documentation here https://infisical.com/docs/api-reference/endpoints/project-templates/create#body-type for the available options",
+				Description: "The type of the project template. Refer to the documentation here https://hanzo.ai/docs/api-reference/endpoints/project-templates/create#body-type for the available options",
 				Required:    true,
 			},
 			"roles": schema.StringAttribute{
@@ -102,7 +102,7 @@ func (r *ProjectTemplateResource) Schema(_ context.Context, _ resource.SchemaReq
 					pkg.UnorderedJsonEquivalentModifier{},
 				},
 				Validators: []validator.String{
-					infisicaltf.JsonStringValidator,
+					kmstf.JsonStringValidator,
 				},
 			},
 			"environments": schema.StringAttribute{
@@ -112,7 +112,7 @@ func (r *ProjectTemplateResource) Schema(_ context.Context, _ resource.SchemaReq
 					pkg.UnorderedJsonEquivalentModifier{},
 				},
 				Validators: []validator.String{
-					infisicaltf.JsonStringValidator,
+					kmstf.JsonStringValidator,
 				},
 			},
 		},
@@ -125,7 +125,7 @@ func (r *ProjectTemplateResource) Configure(_ context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -158,7 +158,7 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	var environments []infisical.Environment
+	var environments []kmsclient.Environment
 	if !plan.Environments.IsNull() && plan.Environments.ValueString() != "" {
 		var envJSON []EnvironmentJSON
 		if err := json.Unmarshal([]byte(plan.Environments.ValueString()), &envJSON); err != nil {
@@ -170,7 +170,7 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 		}
 
 		for _, e := range envJSON {
-			environments = append(environments, infisical.Environment{
+			environments = append(environments, kmsclient.Environment{
 				Name:     e.Name,
 				Slug:     e.Slug,
 				Position: e.Position,
@@ -179,7 +179,7 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	// Parse roles from JSON string
-	var roles []infisical.Role
+	var roles []kmsclient.Role
 	if !plan.Roles.IsNull() && plan.Roles.ValueString() != "" {
 		var rolesJSON []RoleJSON
 		if err := json.Unmarshal([]byte(plan.Roles.ValueString()), &rolesJSON); err != nil {
@@ -191,13 +191,13 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 		}
 
 		for _, r := range rolesJSON {
-			role := infisical.Role{
+			role := kmsclient.Role{
 				Name: r.Name,
 				Slug: r.Slug,
 			}
 
 			for _, p := range r.Permissions {
-				perm := infisical.Permission{
+				perm := kmsclient.Permission{
 					Subject:    p.Subject,
 					Action:     p.Action,
 					Conditions: p.Conditions,
@@ -212,7 +212,7 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 		}
 	}
 
-	res, err := r.client.CreateProjectTemplate(infisical.CreateProjectTemplateRequest{
+	res, err := r.client.CreateProjectTemplate(kmsclient.CreateProjectTemplateRequest{
 		Name:         plan.Name.ValueString(),
 		Description:  plan.Description.ValueString(),
 		Type:         plan.Type.ValueString(),
@@ -228,7 +228,7 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	// map the Infisical project template to the resource model
+	// map the Kms project template to the resource model
 	plan.ID = types.StringValue(res.ID)
 	plan.Name = types.StringValue(res.Name)
 	plan.Description = types.StringValue(res.Description)
@@ -276,11 +276,11 @@ func (r *ProjectTemplateResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	// fetch the project template from Infisical
+	// fetch the project template from Kms
 	template, err := r.client.GetProjectTemplateById(state.ID.ValueString())
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -307,7 +307,7 @@ func (r *ProjectTemplateResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	// filter out default roles (admin, member, etc)
-	var customRoles []infisical.Role
+	var customRoles []kmsclient.Role
 	for _, role := range template.Roles {
 		if !isDefaultRole(role.Slug) {
 			customRoles = append(customRoles, role)
@@ -354,7 +354,7 @@ func (r *ProjectTemplateResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	// parse environments from JSON string
-	var environments []infisical.Environment
+	var environments []kmsclient.Environment
 	if !plan.Environments.IsNull() && plan.Environments.ValueString() != "" {
 		var envJSON []EnvironmentJSON
 		if err := json.Unmarshal([]byte(plan.Environments.ValueString()), &envJSON); err != nil {
@@ -366,7 +366,7 @@ func (r *ProjectTemplateResource) Update(ctx context.Context, req resource.Updat
 		}
 
 		for _, e := range envJSON {
-			environments = append(environments, infisical.Environment{
+			environments = append(environments, kmsclient.Environment{
 				Name:     e.Name,
 				Slug:     e.Slug,
 				Position: e.Position,
@@ -375,7 +375,7 @@ func (r *ProjectTemplateResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	// parse roles from JSON string
-	var roles []infisical.Role
+	var roles []kmsclient.Role
 	if !plan.Roles.IsNull() && plan.Roles.ValueString() != "" {
 		var rolesJSON []RoleJSON
 		if err := json.Unmarshal([]byte(plan.Roles.ValueString()), &rolesJSON); err != nil {
@@ -387,13 +387,13 @@ func (r *ProjectTemplateResource) Update(ctx context.Context, req resource.Updat
 		}
 
 		for _, r := range rolesJSON {
-			role := infisical.Role{
+			role := kmsclient.Role{
 				Name: r.Name,
 				Slug: r.Slug,
 			}
 
 			for _, p := range r.Permissions {
-				perm := infisical.Permission{
+				perm := kmsclient.Permission{
 					Subject:    p.Subject,
 					Action:     p.Action,
 					Conditions: p.Conditions,
@@ -408,7 +408,7 @@ func (r *ProjectTemplateResource) Update(ctx context.Context, req resource.Updat
 		}
 	}
 
-	apiResp, err := r.client.UpdateProjectTemplate(infisical.UpdateProjectTemplateRequest{
+	apiResp, err := r.client.UpdateProjectTemplate(kmsclient.UpdateProjectTemplateRequest{
 		ID:           plan.ID.ValueString(),
 		Name:         plan.Name.ValueString(),
 		Description:  plan.Description.ValueString(),
@@ -450,11 +450,11 @@ func (r *ProjectTemplateResource) Delete(ctx context.Context, req resource.Delet
 		return
 	}
 
-	// Call the Infisical API to delete the project template
+	// Call the Kms API to delete the project template
 	_, err := r.client.DeleteProjectTemplate(state.ID.ValueString())
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			return
 		}
 
@@ -470,7 +470,7 @@ func isDefaultRole(slug string) bool {
 	return slug == "admin" || slug == "member" || slug == "viewer" || slug == "no-access"
 }
 
-func marshalRolesToJSON(roles []infisical.Role) (types.String, diag.Diagnostics) {
+func marshalRolesToJSON(roles []kmsclient.Role) (types.String, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if len(roles) == 0 {
@@ -519,7 +519,7 @@ func marshalRolesToJSON(roles []infisical.Role) (types.String, diag.Diagnostics)
 	return types.StringValue(string(jsonBytes)), diags
 }
 
-func marshalEnvironmentsToJSON(environments []infisical.Environment) (types.String, diag.Diagnostics) {
+func marshalEnvironmentsToJSON(environments []kmsclient.Environment) (types.String, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if len(environments) == 0 {

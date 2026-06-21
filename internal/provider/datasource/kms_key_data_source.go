@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -18,7 +18,7 @@ func NewKMSKeyDataSource() datasource.DataSource {
 }
 
 type KMSKeyDataSource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type KMSKeyDataSourceModel struct {
@@ -73,12 +73,12 @@ func (d *KMSKeyDataSource) Configure(ctx context.Context, req datasource.Configu
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *infisical.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *kmsclient.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
@@ -96,7 +96,7 @@ func (d *KMSKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	kmsKey, err := d.client.GetKMSKey(infisical.GetKMSKeyRequest{
+	kmsKey, err := d.client.GetKMSKey(kmsclient.GetKMSKeyRequest{
 		KeyId: config.KeyId.ValueString(),
 	})
 
@@ -113,7 +113,7 @@ func (d *KMSKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	config.EncryptionAlgorithm = types.StringValue(kmsKey.Key.EncryptionAlgorithm)
 
 	if kmsKey.Key.KeyUsage == "sign-verify" {
-		publicKeyResp, pubKeyErr := d.client.GetKMSKeyPublicKey(infisical.GetKMSKeyPublicKeyRequest{
+		publicKeyResp, pubKeyErr := d.client.GetKMSKeyPublicKey(kmsclient.GetKMSKeyPublicKeyRequest{
 			KeyId: kmsKey.Key.ID,
 		})
 		if pubKeyErr == nil {
@@ -126,7 +126,7 @@ func (d *KMSKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			config.PublicKey = types.StringNull()
 		}
 
-		signingAlgResp, sigAlgErr := d.client.GetKMSKeySigningAlgorithms(infisical.GetKMSKeySigningAlgorithmsRequest{
+		signingAlgResp, sigAlgErr := d.client.GetKMSKeySigningAlgorithms(kmsclient.GetKMSKeySigningAlgorithmsRequest{
 			KeyId: kmsKey.Key.ID,
 		})
 		if sigAlgErr == nil {

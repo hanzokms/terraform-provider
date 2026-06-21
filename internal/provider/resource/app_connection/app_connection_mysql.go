@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -30,7 +30,7 @@ const AppConnectionMySqlAuthMethodUsernameAndPassword = "username-and-password"
 
 func NewAppConnectionMySqlResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppMySql,
+		App:               kmsclient.AppConnectionAppMySql,
 		AppConnectionName: "MySQL",
 		ResourceTypeName:  "_app_connection_mysql",
 		AllowedMethods:    []string{AppConnectionMySqlAuthMethodUsernameAndPassword},

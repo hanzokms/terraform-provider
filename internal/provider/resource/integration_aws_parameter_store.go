@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/input"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/input"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -29,16 +29,16 @@ func NewIntegrationAwsParameterStoreResource() resource.Resource {
 
 // IntegrationAwsParameterStore is the resource implementation.
 type IntegrationAWSParameterStoreResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type AwsParameterStoreMetadataStruct struct {
-	SecretAWSTag        []infisical.AwsTag `json:"secretAWSTag,omitempty"`
+	SecretAWSTag        []kmsclient.AwsTag `json:"secretAWSTag,omitempty"`
 	ShouldDisableDelete bool               `json:"shouldDisableDelete,omitempty"`
 }
 
 type AwsParameterStoreOptions struct {
-	AwsTags             []infisical.AwsTag `tfsdk:"aws_tags" json:"secretAWSTag,omitempty"`
+	AwsTags             []kmsclient.AwsTag `tfsdk:"aws_tags" json:"secretAWSTag,omitempty"`
 	ShouldDisableDelete *bool              `tfsdk:"should_disable_delete" json:"shouldDisableDelete,omitempty"`
 }
 
@@ -67,7 +67,7 @@ func (r *IntegrationAWSParameterStoreResource) Metadata(_ context.Context, req r
 // Schema defines the schema for the resource.
 func (r *IntegrationAWSParameterStoreResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "**Deprecated:** This resource is deprecated and will be removed in a future version. Use `infisical_secret_sync_aws_parameter_store` instead.\n\nCreate AWS Parameter Store integration & save to Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "**Deprecated:** This resource is deprecated and will be removed in a future version. Use `kms_secret_sync_aws_parameter_store` instead.\n\nCreate AWS Parameter Store integration & save to Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"options": schema.SingleNestedAttribute{
 				Description: "Integration options",
@@ -114,13 +114,13 @@ func (r *IntegrationAWSParameterStoreResource) Schema(_ context.Context, _ resou
 
 			"integration_auth_id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "The ID of the integration auth, used internally by Infisical.",
+				Description:   "The ID of the integration auth, used internally by Kms.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
 			"integration_id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "The ID of the integration, used internally by Infisical.",
+				Description:   "The ID of the integration, used internally by Kms.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
@@ -148,7 +148,7 @@ func (r *IntegrationAWSParameterStoreResource) Schema(_ context.Context, _ resou
 
 			"project_id": schema.StringAttribute{
 				Required:      true,
-				Description:   "The ID of your Infisical project.",
+				Description:   "The ID of your Kms project.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 
@@ -164,7 +164,7 @@ func (r *IntegrationAWSParameterStoreResource) Schema(_ context.Context, _ resou
 
 			"secret_path": schema.StringAttribute{
 				Required:    true,
-				Description: "The secret path in Infisical to sync secrets from.",
+				Description: "The secret path in Kms to sync secrets from.",
 			},
 		},
 	}
@@ -176,7 +176,7 @@ func (r *IntegrationAWSParameterStoreResource) Configure(_ context.Context, req 
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -217,9 +217,9 @@ func (r *IntegrationAWSParameterStoreResource) Create(ctx context.Context, req r
 		return
 	}
 
-	createIntegrationAuthRequest := infisical.CreateIntegrationAuthRequest{
+	createIntegrationAuthRequest := kmsclient.CreateIntegrationAuthRequest{
 		ProjectID:   plan.ProjectID.ValueString(),
-		Integration: infisical.IntegrationAuthTypeAwsParameterStore,
+		Integration: kmsclient.IntegrationAuthTypeAwsParameterStore,
 	}
 
 	if authMethod == pkg.AwsAuthMethodAccessKey {
@@ -259,7 +259,7 @@ func (r *IntegrationAWSParameterStoreResource) Create(ctx context.Context, req r
 	}
 
 	// Create the integration
-	integration, err := r.client.CreateIntegration(infisical.CreateIntegrationRequest{
+	integration, err := r.client.CreateIntegration(kmsclient.CreateIntegrationRequest{
 		IntegrationAuthID: auth.IntegrationAuth.ID,
 		Region:            plan.AWSRegion.ValueString(),
 		Metadata:          metadataMap,
@@ -306,12 +306,12 @@ func (r *IntegrationAWSParameterStoreResource) Read(ctx context.Context, req res
 		return
 	}
 
-	integration, err := r.client.GetIntegration(infisical.GetIntegrationRequest{
+	integration, err := r.client.GetIntegration(kmsclient.GetIntegrationRequest{
 		ID: state.IntegrationID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 		} else {
 			resp.Diagnostics.AddError(
@@ -405,8 +405,8 @@ func (r *IntegrationAWSParameterStoreResource) Update(ctx context.Context, req r
 		}
 	}
 
-	updateIntegrationAuthRequest := infisical.UpdateIntegrationAuthRequest{
-		Integration:       infisical.IntegrationAuthTypeAwsSecretsManager,
+	updateIntegrationAuthRequest := kmsclient.UpdateIntegrationAuthRequest{
+		Integration:       kmsclient.IntegrationAuthTypeAwsSecretsManager,
 		IntegrationAuthId: plan.IntegrationAuthID.ValueString(),
 	}
 	if authMethod == pkg.AwsAuthMethodAccessKey {
@@ -432,11 +432,11 @@ func (r *IntegrationAWSParameterStoreResource) Update(ctx context.Context, req r
 	if planOptions.AwsTags != nil {
 		metadataMap["secretAWSTag"] = planOptions.AwsTags
 	} else {
-		metadataMap["secretAWSTag"] = []infisical.AwsTag{}
+		metadataMap["secretAWSTag"] = []kmsclient.AwsTag{}
 	}
 
 	// Update the integration
-	updatedIntegration, err := r.client.UpdateIntegration(infisical.UpdateIntegrationRequest{
+	updatedIntegration, err := r.client.UpdateIntegration(kmsclient.UpdateIntegrationRequest{
 		ID:          state.IntegrationID.ValueString(),
 		Metadata:    metadataMap,
 		Environment: plan.Environment.ValueString(),
@@ -482,7 +482,7 @@ func (r *IntegrationAWSParameterStoreResource) Delete(ctx context.Context, req r
 		return
 	}
 
-	_, err := r.client.DeleteIntegrationAuth(infisical.DeleteIntegrationAuthRequest{
+	_, err := r.client.DeleteIntegrationAuth(kmsclient.DeleteIntegrationAuthRequest{
 		ID: state.IntegrationAuthID.ValueString(),
 	})
 

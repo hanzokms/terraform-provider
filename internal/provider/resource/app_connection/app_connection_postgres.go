@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -30,7 +30,7 @@ const AppConnectionPostgresAuthMethodUsernameAndPassword = "username-and-passwor
 
 func NewAppConnectionPostgresResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppPostgres,
+		App:               kmsclient.AppConnectionAppPostgres,
 		AppConnectionName: "PostgreSQL",
 		ResourceTypeName:  "_app_connection_postgres",
 		AllowedMethods:    []string{AppConnectionPostgresAuthMethodUsernameAndPassword},

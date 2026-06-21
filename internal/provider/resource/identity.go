@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -21,7 +21,7 @@ func NewIdentityResource() resource.Resource {
 
 // IdentityResource is the resource implementation.
 type IdentityResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type MetaEntry struct {
@@ -48,7 +48,7 @@ func (r *IdentityResource) Metadata(_ context.Context, req resource.MetadataRequ
 // Schema defines the schema for the resource.
 func (r *IdentityResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity in Infisical.",
+		Description: "Create and manage identity in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
 				Description: "The name for the identity",
@@ -107,7 +107,7 @@ func (r *IdentityResource) Configure(_ context.Context, req resource.ConfigureRe
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -139,17 +139,17 @@ func (r *IdentityResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	metadata := []infisical.CreateMetaEntry{}
+	metadata := []kmsclient.CreateMetaEntry{}
 	if plan.Metadata != nil {
 		for _, el := range plan.Metadata {
-			metadata = append(metadata, infisical.CreateMetaEntry{
+			metadata = append(metadata, kmsclient.CreateMetaEntry{
 				Key:   el.Key.ValueString(),
 				Value: el.Value.ValueString(),
 			})
 		}
 	}
 
-	newIdentity, err := r.client.CreateIdentity(infisical.CreateIdentityRequest{
+	newIdentity, err := r.client.CreateIdentity(kmsclient.CreateIdentityRequest{
 		OrgID:               plan.OrgID.ValueString(),
 		Name:                plan.Name.ValueString(),
 		HasDeleteProtection: plan.HasDeleteProtection.ValueBool(),
@@ -210,12 +210,12 @@ func (r *IdentityResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	// Get the latest data from the API
-	orgIdentity, err := r.client.GetIdentity(infisical.GetIdentityRequest{
+	orgIdentity, err := r.client.GetIdentity(kmsclient.GetIdentityRequest{
 		IdentityID: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -292,17 +292,17 @@ func (r *IdentityResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	metadata := []infisical.CreateMetaEntry{}
+	metadata := []kmsclient.CreateMetaEntry{}
 	if plan.Metadata != nil {
 		for _, el := range plan.Metadata {
-			metadata = append(metadata, infisical.CreateMetaEntry{
+			metadata = append(metadata, kmsclient.CreateMetaEntry{
 				Key:   el.Key.ValueString(),
 				Value: el.Value.ValueString(),
 			})
 		}
 	}
 
-	orgIdentity, err := r.client.UpdateIdentity(infisical.UpdateIdentityRequest{
+	orgIdentity, err := r.client.UpdateIdentity(kmsclient.UpdateIdentityRequest{
 		IdentityID:          state.ID.ValueString(),
 		Name:                plan.Name.ValueString(),
 		HasDeleteProtection: plan.HasDeleteProtection.ValueBool(),
@@ -355,7 +355,7 @@ func (r *IdentityResource) Delete(ctx context.Context, req resource.DeleteReques
 		return
 	}
 
-	_, err := r.client.DeleteIdentity(infisical.DeleteIdentityRequest{
+	_, err := r.client.DeleteIdentity(kmsclient.DeleteIdentityRequest{
 		IdentityID: state.ID.ValueString(),
 	})
 
@@ -378,12 +378,12 @@ func (r *IdentityResource) ImportState(ctx context.Context, req resource.ImportS
 		return
 	}
 
-	orgIdentity, err := r.client.GetIdentity(infisical.GetIdentityRequest{
+	orgIdentity, err := r.client.GetIdentity(kmsclient.GetIdentityRequest{
 		IdentityID: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Error importing identity",
 				fmt.Sprintf("No identity found with ID: %s", req.ID),

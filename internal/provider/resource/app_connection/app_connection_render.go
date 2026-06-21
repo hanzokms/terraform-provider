@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -21,14 +21,14 @@ const AppConnectionRenderAuthMethodApiKey = "api-key"
 
 func NewAppConnectionRenderResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppRender,
+		App:               kmsclient.AppConnectionAppRender,
 		AppConnectionName: "Render",
 		ResourceTypeName:  "_app_connection_render",
 		AllowedMethods:    []string{AppConnectionRenderAuthMethodApiKey},
 		CredentialsAttributes: map[string]schema.Attribute{
 			"api_key": schema.StringAttribute{
 				Required:    true,
-				Description: "The API key to use for authentication. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/render",
+				Description: "The API key to use for authentication. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/render",
 				Sensitive:   true,
 			},
 		},

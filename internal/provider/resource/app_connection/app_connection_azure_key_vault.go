@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -23,24 +23,24 @@ const AzureKeyVaultAppConnectionClientSecretsMethod = "client-secret"
 
 func NewAppConnectionAzureKeyVaultResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppAzureKeyVault,
+		App:               kmsclient.AppConnectionAppAzureKeyVault,
 		AppConnectionName: "Azure Key Vault",
 		ResourceTypeName:  "_app_connection_azure_key_vault",
 		AllowedMethods:    []string{AzureKeyVaultAppConnectionClientSecretsMethod},
 		CredentialsAttributes: map[string]schema.Attribute{
 			"tenant_id": schema.StringAttribute{
 				Required:    true,
-				Description: "The Azure Active Directory (AAD) tenant ID. Required for key-vault method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-key-vault",
+				Description: "The Azure Active Directory (AAD) tenant ID. Required for key-vault method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-key-vault",
 				Sensitive:   false,
 			},
 			"client_id": schema.StringAttribute{
 				Required:    true,
-				Description: "The Azure application (client) ID. Required for key-vault method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-key-vault",
+				Description: "The Azure application (client) ID. Required for key-vault method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-key-vault",
 				Sensitive:   true,
 			},
 			"client_secret": schema.StringAttribute{
 				Required:    true,
-				Description: "The Azure client secret. Required for key-vault method. For more details, refer to the documentation here infisical.com/docs/integrations/app-connections/azure-key-vault",
+				Description: "The Azure client secret. Required for key-vault method. For more details, refer to the documentation here hanzo.ai/docs/integrations/app-connections/azure-key-vault",
 				Sensitive:   true,
 			},
 		},

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -26,7 +26,7 @@ func NewProjectRoleResource() resource.Resource {
 
 // projectRoleResource is the resource implementation.
 type projectRoleResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type ProjectRolePermissionV2Entry struct {
@@ -61,13 +61,13 @@ func (r *projectRoleResource) Metadata(_ context.Context, req resource.MetadataR
 // Schema defines the schema for the resource.
 func (r *projectRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create custom project roles & save to Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create custom project roles & save to Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"slug": schema.StringAttribute{
 				Description: "The slug for the new role",
 				Required:    true,
 				Validators: []validator.String{
-					infisicaltf.SlugRegexValidator,
+					kmstf.SlugRegexValidator,
 				},
 			},
 			"name": schema.StringAttribute{
@@ -91,7 +91,7 @@ func (r *projectRoleResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"permissions": schema.StringAttribute{
 				Optional:    true,
-				Description: "The permissions assigned to the project role. Refer to the documentation here https://infisical.com/docs/internals/permissions for its usage. Legacy permissions (V1) is not supported for this resource.",
+				Description: "The permissions assigned to the project role. Refer to the documentation here https://hanzo.ai/docs/internals/permissions for its usage. Legacy permissions (V1) is not supported for this resource.",
 
 				PlanModifiers: []planmodifier.String{
 					pkg.UnorderedJsonEquivalentModifier{},
@@ -107,7 +107,7 @@ func (r *projectRoleResource) Configure(_ context.Context, req resource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -140,7 +140,7 @@ func (r *projectRoleResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// Permissions V2
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 
@@ -224,7 +224,7 @@ func (r *projectRoleResource) Create(ctx context.Context, req resource.CreateReq
 		permissions[i] = permMap
 	}
 
-	newProjectRole, err := r.client.CreateProjectRoleV2(infisical.CreateProjectRoleV2Request{
+	newProjectRole, err := r.client.CreateProjectRoleV2(kmsclient.CreateProjectRoleV2Request{
 		ProjectId:   project.ID,
 		Slug:        plan.Slug.ValueString(),
 		Name:        plan.Name.ValueString(),
@@ -235,7 +235,7 @@ func (r *projectRoleResource) Create(ctx context.Context, req resource.CreateReq
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating project role",
-			"Couldn't save project role to Infisical, unexpected error: "+err.Error(),
+			"Couldn't save project role to Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -267,7 +267,7 @@ func (r *projectRoleResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: state.ProjectSlug.ValueString(),
 	})
 
@@ -279,19 +279,19 @@ func (r *projectRoleResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	projectRole, err := r.client.GetProjectRoleBySlugV2(infisical.GetProjectRoleBySlugV2Request{
+	projectRole, err := r.client.GetProjectRoleBySlugV2(kmsclient.GetProjectRoleBySlugV2Request{
 		ProjectId: project.ID,
 		RoleSlug:  state.Slug.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
 		resp.Diagnostics.AddError(
 			"Error reading project role",
-			"Couldn't read project role from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read project role from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -385,7 +385,7 @@ func (r *projectRoleResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 
@@ -468,7 +468,7 @@ func (r *projectRoleResource) Update(ctx context.Context, req resource.UpdateReq
 		permissions[i] = permMap
 	}
 
-	_, err = r.client.UpdateProjectRoleV2(infisical.UpdateProjectRoleV2Request{
+	_, err = r.client.UpdateProjectRoleV2(kmsclient.UpdateProjectRoleV2Request{
 		ProjectId:   project.ID,
 		RoleId:      plan.ID.ValueString(),
 		Slug:        plan.Slug.ValueString(),
@@ -480,7 +480,7 @@ func (r *projectRoleResource) Update(ctx context.Context, req resource.UpdateReq
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating project role",
-			"Couldn't update project role from Infisical, unexpected error: "+err.Error(),
+			"Couldn't update project role from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -510,7 +510,7 @@ func (r *projectRoleResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	_, err := r.client.DeleteProjectRole(infisical.DeleteProjectRoleRequest{
+	_, err := r.client.DeleteProjectRole(kmsclient.DeleteProjectRoleRequest{
 		ProjectSlug: state.ProjectSlug.ValueString(),
 		RoleId:      state.ID.ValueString(),
 	})
@@ -518,7 +518,7 @@ func (r *projectRoleResource) Delete(ctx context.Context, req resource.DeleteReq
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting project role",
-			"Couldn't delete project role from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete project role from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -21,7 +21,7 @@ func NewIdentityDetailsDataSource() datasource.DataSource {
 
 // IdentityDetailsDataSource defines the data source implementation.
 type IdentityDetailsDataSource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // OrganizationModel represents the organization nested object.
@@ -42,7 +42,7 @@ func (d *IdentityDetailsDataSource) Metadata(ctx context.Context, req datasource
 
 func (d *IdentityDetailsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Interact with Infisical identity details.",
+		Description: "Interact with Kms identity details.",
 		Attributes: map[string]schema.Attribute{
 			"organization": schema.SingleNestedAttribute{
 				Description: "Organization details",
@@ -72,7 +72,7 @@ func (d *IdentityDetailsDataSource) Configure(ctx context.Context, req datasourc
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -109,8 +109,8 @@ func (d *IdentityDetailsDataSource) Read(ctx context.Context, req datasource.Rea
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Something went wrong while fetching the identity details",
-			"If the error is not clear, please get in touch at infisical.com/slack\n\n"+
-				"Infisical Client Error: "+err.Error(),
+			"If the error is not clear, please get in touch at hanzo.ai/slack\n\n"+
+				"Kms Client Error: "+err.Error(),
 		)
 	}
 

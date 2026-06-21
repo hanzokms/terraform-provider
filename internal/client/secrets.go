@@ -1,13 +1,13 @@
-package infisicalclient
+package kmsclient
 
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/hanzokms/terraform-provider/internal/crypto"
+	"github.com/hanzokms/terraform-provider/internal/errors"
 	"net/http"
 	"strconv"
 	"strings"
-	"terraform-provider-infisical/internal/crypto"
-	"terraform-provider-infisical/internal/errors"
 )
 
 const (

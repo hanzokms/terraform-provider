@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -30,7 +30,7 @@ const AppConnectionOracleDbAuthMethodUsernameAndPassword = "username-and-passwor
 
 func NewAppConnectionOracleDbResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppOracle,
+		App:               kmsclient.AppConnectionAppOracle,
 		AppConnectionName: "Oracle Database",
 		ResourceTypeName:  "_app_connection_oracledb",
 		AllowedMethods:    []string{AppConnectionOracleDbAuthMethodUsernameAndPassword},

@@ -3,9 +3,9 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"slices"
 	"strconv"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -25,7 +25,7 @@ func NewIdentityTokenAuthResource() resource.Resource {
 
 // IdentityTokenAuthResource is the resource implementation.
 type IdentityTokenAuthResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityTokenAuthResourceModel describes the data source data model.
@@ -50,7 +50,7 @@ func (r *IdentityTokenAuthResource) Metadata(_ context.Context, req resource.Met
 // Schema defines the schema for the resource.
 func (r *IdentityTokenAuthResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity token auth in Infisical.",
+		Description: "Create and manage identity token auth in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the token auth.",
@@ -104,7 +104,7 @@ func (r *IdentityTokenAuthResource) Configure(_ context.Context, req resource.Co
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -118,7 +118,7 @@ func (r *IdentityTokenAuthResource) Configure(_ context.Context, req resource.Co
 	r.client = client
 }
 
-func updateTokenAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityTokenAuthResourceModel, newIdentityTokenAuth *infisical.IdentityTokenAuth) {
+func updateTokenAuthStateByApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityTokenAuthResourceModel, newIdentityTokenAuth *kmsclient.IdentityTokenAuth) {
 	plan.AccessTokenMaxTTL = types.Int64Value(newIdentityTokenAuth.AccessTokenMaxTTL)
 	plan.AccessTokenTTL = types.Int64Value(newIdentityTokenAuth.AccessTokenTTL)
 	plan.AccessTokenNumUsesLimit = types.Int64Value(newIdentityTokenAuth.AccessTokenNumUsesLimit)
@@ -170,7 +170,7 @@ func (r *IdentityTokenAuthResource) Create(ctx context.Context, req resource.Cre
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
 
-	newIdentityTokenAuth, err := r.client.CreateIdentityTokenAuth(infisical.CreateIdentityTokenAuthRequest{
+	newIdentityTokenAuth, err := r.client.CreateIdentityTokenAuth(kmsclient.CreateIdentityTokenAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTTL:          plan.AccessTokenTTL.ValueInt64(),
 		AccessTokenMaxTTL:       plan.AccessTokenMaxTTL.ValueInt64(),
@@ -181,7 +181,7 @@ func (r *IdentityTokenAuthResource) Create(ctx context.Context, req resource.Cre
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating identity token auth",
-			"Couldn't save token auth to Infisical, unexpected error: "+err.Error(),
+			"Couldn't save token auth to Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -215,12 +215,12 @@ func (r *IdentityTokenAuthResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	// Get the latest data from the API
-	identityTokenAuth, err := r.client.GetIdentityTokenAuth(infisical.GetIdentityTokenAuthRequest{
+	identityTokenAuth, err := r.client.GetIdentityTokenAuth(kmsclient.GetIdentityTokenAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -267,7 +267,7 @@ func (r *IdentityTokenAuthResource) Update(ctx context.Context, req resource.Upd
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
 
-	updatedIdentityTokenAuth, err := r.client.UpdateIdentityTokenAuth(infisical.UpdateIdentityTokenAuthRequest{
+	updatedIdentityTokenAuth, err := r.client.UpdateIdentityTokenAuth(kmsclient.UpdateIdentityTokenAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTTL:          plan.AccessTokenTTL.ValueInt64(),
 		AccessTokenMaxTTL:       plan.AccessTokenMaxTTL.ValueInt64(),
@@ -310,7 +310,7 @@ func (r *IdentityTokenAuthResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 
-	_, err := r.client.RevokeIdentityTokenAuth(infisical.RevokeIdentityTokenAuthRequest{
+	_, err := r.client.RevokeIdentityTokenAuth(kmsclient.RevokeIdentityTokenAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
@@ -334,12 +334,12 @@ func (r *IdentityTokenAuthResource) ImportState(ctx context.Context, req resourc
 		return
 	}
 
-	identity, err := r.client.GetIdentity(infisical.GetIdentityRequest{
+	identity, err := r.client.GetIdentity(kmsclient.GetIdentityRequest{
 		IdentityID: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Identity not found",
 				"The identity with the given ID was not found",
@@ -347,7 +347,7 @@ func (r *IdentityTokenAuthResource) ImportState(ctx context.Context, req resourc
 		} else {
 			resp.Diagnostics.AddError(
 				"Error importing identity token auth",
-				"Couldn't read identity from Infisical, unexpected error: "+err.Error(),
+				"Couldn't read identity from Kms, unexpected error: "+err.Error(),
 			)
 		}
 		return
@@ -371,14 +371,14 @@ func (r *IdentityTokenAuthResource) ImportState(ctx context.Context, req resourc
 		return
 	}
 
-	identityTokenAuth, err := r.client.GetIdentityTokenAuth(infisical.GetIdentityTokenAuthRequest{
+	identityTokenAuth, err := r.client.GetIdentityTokenAuth(kmsclient.GetIdentityTokenAuthRequest{
 		IdentityID: req.ID,
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error importing identity token auth",
-			"Couldn't read identity token auth from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read identity token auth from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}

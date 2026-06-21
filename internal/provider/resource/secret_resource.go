@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/strings"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/strings"
 	"time"
 
 	"github.com/hashicorp/go-uuid"
@@ -35,7 +35,7 @@ func NewSecretResource() resource.Resource {
 
 // secretResource is the resource implementation.
 type secretResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type SecretReminder struct {
@@ -126,7 +126,7 @@ func (r *secretResource) Metadata(_ context.Context, req resource.MetadataReques
 // Schema defines the schema for the resource.
 func (r *secretResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create secrets & save to Infisical",
+		Description: "Create secrets & save to Kms",
 		Attributes: map[string]schema.Attribute{
 			"folder_path": schema.StringAttribute{
 				Description:   "The path to the folder where the given secret resides",
@@ -178,7 +178,7 @@ func (r *secretResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				},
 			},
 			"workspace_id": schema.StringAttribute{
-				Description:   "The Infisical project ID (Required for Machine Identity auth, and service tokens with multiple scopes)",
+				Description:   "The Kms project ID (Required for Machine Identity auth, and service tokens with multiple scopes)",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown(), stringplanmodifier.RequiresReplace()},
 				Optional:      true,
 				Computed:      true,
@@ -232,7 +232,7 @@ func (r *secretResource) Configure(_ context.Context, req resource.ConfigureRequ
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -288,9 +288,9 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 	}
 
-	secretMetadata := make([]infisical.SecretMetadataItem, 0, len(planMetadata))
+	secretMetadata := make([]kmsclient.SecretMetadataItem, 0, len(planMetadata))
 	for key, value := range planMetadata {
-		secretMetadata = append(secretMetadata, infisical.SecretMetadataItem{
+		secretMetadata = append(secretMetadata, kmsclient.SecretMetadataItem{
 			Key:   key,
 			Value: value.ValueString(),
 		})
@@ -298,7 +298,7 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	var workspaceId string
 
-	if r.client.Config.AuthStrategy == infisical.AuthStrategy.SERVICE_TOKEN {
+	if r.client.Config.AuthStrategy == kmsclient.AuthStrategy.SERVICE_TOKEN {
 		serviceTokenDetails, err := r.client.GetServiceTokenDetailsV2()
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -328,7 +328,7 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 		secretReminderRepeatDays = plan.SecretReminder.RepeatDays.ValueInt64()
 	}
 
-	secret, err := r.client.CreateRawSecretsV3(infisical.CreateRawSecretV3Request{
+	secret, err := r.client.CreateRawSecretsV3(kmsclient.CreateRawSecretV3Request{
 		Environment:              plan.EnvSlug.ValueString(),
 		WorkspaceID:              workspaceId,
 		Type:                     "shared",
@@ -386,7 +386,7 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 
 	// Get refreshed order value from HashiCups
-	response, err := r.client.GetSingleRawSecretByNameV3(infisical.GetSingleSecretByNameV3Request{
+	response, err := r.client.GetSingleRawSecretByNameV3(kmsclient.GetSingleSecretByNameV3Request{
 		SecretName:  state.Name.ValueString(),
 		Type:        "shared",
 		WorkspaceId: state.WorkspaceId.ValueString(),
@@ -395,12 +395,12 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 		} else {
 			resp.Diagnostics.AddError(
-				"Error Reading Infisical secret",
-				"Could not read Infisical secret named "+state.Name.ValueString()+": "+err.Error(),
+				"Error Reading Kms secret",
+				"Could not read Kms secret named "+state.Name.ValueString()+": "+err.Error(),
 			)
 		}
 		return
@@ -483,9 +483,9 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 	}
 
-	secretMetadata := make([]infisical.SecretMetadataItem, 0, len(planMetadata))
+	secretMetadata := make([]kmsclient.SecretMetadataItem, 0, len(planMetadata))
 	for key, value := range planMetadata {
-		secretMetadata = append(secretMetadata, infisical.SecretMetadataItem{
+		secretMetadata = append(secretMetadata, kmsclient.SecretMetadataItem{
 			Key:   key,
 			Value: value.ValueString(),
 		})
@@ -501,7 +501,7 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	var workspaceId string
-	if r.client.Config.AuthStrategy == infisical.AuthStrategy.SERVICE_TOKEN {
+	if r.client.Config.AuthStrategy == kmsclient.AuthStrategy.SERVICE_TOKEN {
 
 		serviceTokenDetails, err := r.client.GetServiceTokenDetailsV2()
 		if err != nil {
@@ -524,7 +524,7 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	updateRequest := infisical.UpdateRawSecretByNameV3Request{
+	updateRequest := kmsclient.UpdateRawSecretByNameV3Request{
 		Environment:              plan.EnvSlug.ValueString(),
 		WorkspaceID:              workspaceId,
 		Type:                     "shared",
@@ -587,8 +587,8 @@ func (r *secretResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	if r.client.Config.IsMachineIdentityAuth || r.client.Config.AuthStrategy == infisical.AuthStrategy.SERVICE_TOKEN {
-		err := r.client.DeleteRawSecretV3(infisical.DeleteRawSecretV3Request{
+	if r.client.Config.IsMachineIdentityAuth || r.client.Config.AuthStrategy == kmsclient.AuthStrategy.SERVICE_TOKEN {
+		err := r.client.DeleteRawSecretV3(kmsclient.DeleteRawSecretV3Request{
 			SecretName:  state.Name.ValueString(),
 			SecretPath:  state.FolderPath.ValueString(),
 			Environment: state.EnvSlug.ValueString(),
@@ -598,7 +598,7 @@ func (r *secretResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Error Deleting Infisical secret",
+				"Error Deleting Kms secret",
 				"Could not delete secret, unexpected error: "+err.Error(),
 			)
 			return
@@ -617,15 +617,15 @@ func (r *secretResource) ImportState(ctx context.Context, req resource.ImportSta
 	var workspace, environment, secretPath, secretName, secretValue, secretId string
 	var tags []string
 	var secretReminder SecretReminder
-	var secretMetadata []infisical.SecretMetadataItem
+	var secretMetadata []kmsclient.SecretMetadataItem
 
 	if _, err := uuid.ParseUUID(req.ID); err == nil {
-		secret, err := r.client.GetSingleSecretByIDV3(infisical.GetSingleSecretByIDV3Request{
+		secret, err := r.client.GetSingleSecretByIDV3(kmsclient.GetSingleSecretByIDV3Request{
 			ID: req.ID,
 		})
 
 		if err != nil {
-			if err == infisical.ErrNotFound {
+			if err == kmsclient.ErrNotFound {
 				resp.Diagnostics.AddError(
 					"Secret not found",
 					"The secret with the given ID was not found",
@@ -633,7 +633,7 @@ func (r *secretResource) ImportState(ctx context.Context, req resource.ImportSta
 			} else {
 				resp.Diagnostics.AddError(
 					"Error fetching secret",
-					"Couldn't fetch secret from Infisical, unexpected error: "+err.Error(),
+					"Couldn't fetch secret from Kms, unexpected error: "+err.Error(),
 				)
 			}
 			return
@@ -665,7 +665,7 @@ func (r *secretResource) ImportState(ctx context.Context, req resource.ImportSta
 			return
 		}
 
-		secret, err := r.client.GetSingleRawSecretByNameV3(infisical.GetSingleSecretByNameV3Request{
+		secret, err := r.client.GetSingleRawSecretByNameV3(kmsclient.GetSingleSecretByNameV3Request{
 			WorkspaceId: parts[0],
 			Environment: parts[1],
 			SecretPath:  parts[2],
@@ -674,7 +674,7 @@ func (r *secretResource) ImportState(ctx context.Context, req resource.ImportSta
 		})
 
 		if err != nil {
-			if err == infisical.ErrNotFound {
+			if err == kmsclient.ErrNotFound {
 				resp.Diagnostics.AddError(
 					"Secret not found",
 					"The secret with the given ID was not found",
@@ -682,7 +682,7 @@ func (r *secretResource) ImportState(ctx context.Context, req resource.ImportSta
 			} else {
 				resp.Diagnostics.AddError(
 					"Error fetching secret",
-					"Couldn't fetch secret from Infisical, unexpected error: "+err.Error(),
+					"Couldn't fetch secret from Kms, unexpected error: "+err.Error(),
 				)
 			}
 			return

@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -20,7 +20,7 @@ func NewIdentityTokenAuthTokenResource() resource.Resource {
 
 // IdentityTokenAuthTokenResource is the resource implementation.
 type IdentityTokenAuthTokenResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityTokenAuthTokenResourceModel describes the resource data model.
@@ -44,7 +44,7 @@ func (r *IdentityTokenAuthTokenResource) Metadata(_ context.Context, req resourc
 // Schema defines the schema for the resource.
 func (r *IdentityTokenAuthTokenResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity token auth token in Infisical.",
+		Description: "Create and manage identity token auth token in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the token auth token",
@@ -97,7 +97,7 @@ func (r *IdentityTokenAuthTokenResource) Configure(_ context.Context, req resour
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -129,7 +129,7 @@ func (r *IdentityTokenAuthTokenResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	createResponse, err := r.client.CreateIdentityTokenAuthToken(infisical.CreateIdentityTokenAuthTokenRequest{
+	createResponse, err := r.client.CreateIdentityTokenAuthToken(kmsclient.CreateIdentityTokenAuthTokenRequest{
 		IdentityID: plan.IdentityID.ValueString(),
 		Name:       plan.Name.ValueString(),
 	})
@@ -137,7 +137,7 @@ func (r *IdentityTokenAuthTokenResource) Create(ctx context.Context, req resourc
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating identity token auth token",
-			"Couldn't create token auth token in Infisical, unexpected error: "+err.Error(),
+			"Couldn't create token auth token in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -177,18 +177,18 @@ func (r *IdentityTokenAuthTokenResource) Read(ctx context.Context, req resource.
 	}
 
 	// Get the latest data from the API
-	tokenData, err := r.client.GetIdentityTokenAuthToken(infisical.GetIdentityTokenAuthTokenRequest{
+	tokenData, err := r.client.GetIdentityTokenAuthToken(kmsclient.GetIdentityTokenAuthTokenRequest{
 		TokenID: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
 			resp.Diagnostics.AddError(
 				"Error reading identity token auth token",
-				"Couldn't read identity token auth token from Infisical, unexpected error: "+err.Error(),
+				"Couldn't read identity token auth token from Kms, unexpected error: "+err.Error(),
 			)
 			return
 		}
@@ -242,7 +242,7 @@ func (r *IdentityTokenAuthTokenResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	updatedToken, err := r.client.UpdateIdentityTokenAuthToken(infisical.UpdateIdentityTokenAuthTokenRequest{
+	updatedToken, err := r.client.UpdateIdentityTokenAuthToken(kmsclient.UpdateIdentityTokenAuthTokenRequest{
 		TokenID: state.ID.ValueString(),
 		Name:    plan.Name.ValueString(),
 	})
@@ -250,7 +250,7 @@ func (r *IdentityTokenAuthTokenResource) Update(ctx context.Context, req resourc
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating identity token auth token",
-			"Couldn't update identity token auth token in Infisical, unexpected error: "+err.Error(),
+			"Couldn't update identity token auth token in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -289,7 +289,7 @@ func (r *IdentityTokenAuthTokenResource) Delete(ctx context.Context, req resourc
 		return
 	}
 
-	_, err := r.client.RevokeIdentityTokenAuthToken(infisical.RevokeIdentityTokenAuthTokenRequest{
+	_, err := r.client.RevokeIdentityTokenAuthToken(kmsclient.RevokeIdentityTokenAuthTokenRequest{
 		IdentityID: state.IdentityID.ValueString(),
 		TokenID:    state.ID.ValueString(),
 	})
@@ -297,7 +297,7 @@ func (r *IdentityTokenAuthTokenResource) Delete(ctx context.Context, req resourc
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting identity token auth token",
-			"Couldn't revoke identity token auth token in Infisical, unexpected error: "+err.Error(),
+			"Couldn't revoke identity token auth token in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -313,12 +313,12 @@ func (r *IdentityTokenAuthTokenResource) ImportState(ctx context.Context, req re
 		return
 	}
 
-	tokenData, err := r.client.GetIdentityTokenAuthToken(infisical.GetIdentityTokenAuthTokenRequest{
+	tokenData, err := r.client.GetIdentityTokenAuthToken(kmsclient.GetIdentityTokenAuthTokenRequest{
 		TokenID: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Error importing identity token auth token",
 				fmt.Sprintf("No token found with token_id: %s", req.ID),
@@ -327,7 +327,7 @@ func (r *IdentityTokenAuthTokenResource) ImportState(ctx context.Context, req re
 		} else {
 			resp.Diagnostics.AddError(
 				"Error importing identity token auth token",
-				"Couldn't read identity token auth token from Infisical, unexpected error: "+err.Error(),
+				"Couldn't read identity token auth token from Kms, unexpected error: "+err.Error(),
 			)
 			return
 		}

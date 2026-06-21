@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -21,7 +21,7 @@ func NewProjectDataSource() datasource.DataSource {
 
 // SecretDataSource defines the data source implementation.
 type ProjectsDataSource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // ExampleDataSourceModel describes the data source data model.
@@ -51,7 +51,7 @@ func (d *ProjectsDataSource) Metadata(ctx context.Context, req datasource.Metada
 
 func (d *ProjectsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Interact with Infisical projects. Only Machine Identity authentication is supported for this data source.",
+		Description: "Interact with Kms projects. Only Machine Identity authentication is supported for this data source.",
 
 		Attributes: map[string]schema.Attribute{
 			"slug": schema.StringAttribute{
@@ -133,7 +133,7 @@ func (d *ProjectsDataSource) Configure(ctx context.Context, req datasource.Confi
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -166,14 +166,14 @@ func (d *ProjectsDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
-	project, err := d.client.GetProject(infisical.GetProjectRequest{
+	project, err := d.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: data.Slug.ValueString(),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Something went wrong while fetching the project",
-			"If the error is not clear, please get in touch at infisical.com/slack\n\n"+
-				"Infisical Client Error: "+err.Error(),
+			"If the error is not clear, please get in touch at hanzo.ai/slack\n\n"+
+				"Kms Client Error: "+err.Error(),
 		)
 	}
 

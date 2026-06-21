@@ -4,14 +4,14 @@ import (
 	"context"
 	"os"
 
-	infisical "terraform-provider-infisical/internal/client"
-	infisicalDatasource "terraform-provider-infisical/internal/provider/datasource"
-	infisicalResource "terraform-provider-infisical/internal/provider/resource"
-	appConnectionResource "terraform-provider-infisical/internal/provider/resource/app_connection"
-	dynamicSecretResource "terraform-provider-infisical/internal/provider/resource/dynamic_secret"
-	externalKmsResource "terraform-provider-infisical/internal/provider/resource/external_kms"
-	secretRotationResource "terraform-provider-infisical/internal/provider/resource/secret_rotation"
-	secretSyncResource "terraform-provider-infisical/internal/provider/resource/secret_sync"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmsDatasource "github.com/hanzokms/terraform-provider/internal/provider/datasource"
+	kmsResource "github.com/hanzokms/terraform-provider/internal/provider/resource"
+	appConnectionResource "github.com/hanzokms/terraform-provider/internal/provider/resource/app_connection"
+	dynamicSecretResource "github.com/hanzokms/terraform-provider/internal/provider/resource/dynamic_secret"
+	externalKmsResource "github.com/hanzokms/terraform-provider/internal/provider/resource/external_kms"
+	secretRotationResource "github.com/hanzokms/terraform-provider/internal/provider/resource/secret_rotation"
+	secretSyncResource "github.com/hanzokms/terraform-provider/internal/provider/resource/secret_sync"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -23,28 +23,28 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ provider.Provider = &infisicalProvider{}
+	_ provider.Provider = &kmsProvider{}
 )
 
 // New is a helper function to simplify provider server and testing implementation.
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &infisicalProvider{
+		return &kmsProvider{
 			version: version,
 		}
 	}
 }
 
-// infisicalProvider is the provider implementation.
-type infisicalProvider struct {
+// kmsProvider is the provider implementation.
+type kmsProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// infisicalProviderModel maps provider schema data to a Go type.
-type infisicalProviderModel struct {
+// kmsProviderModel maps provider schema data to a Go type.
+type kmsProviderModel struct {
 	Host         types.String `tfsdk:"host"`
 	ServiceToken types.String `tfsdk:"service_token"`
 
@@ -84,19 +84,19 @@ type kubernetesAuthModel struct {
 }
 
 // Metadata returns the provider type name.
-func (p *infisicalProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "infisical"
+func (p *kmsProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "kms"
 	resp.Version = p.version
 }
 
 // Schema defines the provider-level schema for configuration data.
-func (p *infisicalProvider) Schema(ctx context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *kmsProvider) Schema(ctx context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "This provider allows you to interact with Infisical",
+		Description: "This provider allows you to interact with Kms",
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
 				Optional:    true,
-				Description: "Used to point the client to fetch secrets from your self hosted instance of Infisical. If not host is provided, https://app.infisical.com is the default host. This attribute can also be set using the `INFISICAL_HOST` environment variable",
+				Description: "Used to point the client to fetch secrets from your self hosted instance of Kms. If not host is provided, https://kms.hanzo.ai is the default host. This attribute can also be set using the `KMS_HOST` environment variable",
 			},
 			"service_token": schema.StringAttribute{
 				Optional:    true,
@@ -124,7 +124,7 @@ func (p *infisicalProvider) Schema(ctx context.Context, _ provider.SchemaRequest
 					"token": schema.StringAttribute{
 						Optional:    true,
 						Sensitive:   true,
-						Description: "The authentication token for Machine Identity Token Auth. This attribute can also be set using the `INFISICAL_TOKEN` environment variable",
+						Description: "The authentication token for Machine Identity Token Auth. This attribute can also be set using the `KMS_TOKEN` environment variable",
 					},
 					"universal": schema.SingleNestedAttribute{
 						Optional:    true,
@@ -133,12 +133,12 @@ func (p *infisicalProvider) Schema(ctx context.Context, _ provider.SchemaRequest
 							"client_id": schema.StringAttribute{
 								Optional:    true,
 								Sensitive:   true,
-								Description: "Machine identity client ID. This attribute can also be set using the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` environment variable",
+								Description: "Machine identity client ID. This attribute can also be set using the `KMS_UNIVERSAL_AUTH_CLIENT_ID` environment variable",
 							},
 							"client_secret": schema.StringAttribute{
 								Optional:    true,
 								Sensitive:   true,
-								Description: "Machine identity client secret. This attribute can also be set using the `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variable",
+								Description: "Machine identity client secret. This attribute can also be set using the `KMS_UNIVERSAL_AUTH_CLIENT_SECRET` environment variable",
 							},
 						},
 					},
@@ -149,12 +149,12 @@ func (p *infisicalProvider) Schema(ctx context.Context, _ provider.SchemaRequest
 							"identity_id": schema.StringAttribute{
 								Optional:    true,
 								Sensitive:   true,
-								Description: "Machine identity ID. This attribute can also be set using the `INFISICAL_MACHINE_IDENTITY_ID` environment variable",
+								Description: "Machine identity ID. This attribute can also be set using the `KMS_MACHINE_IDENTITY_ID` environment variable",
 							},
 							"token_environment_variable_name": schema.StringAttribute{
 								Optional:    true,
 								Sensitive:   false,
-								Description: "The environment variable name for the OIDC JWT token. This attribute can also be set using the `INFISICAL_OIDC_AUTH_TOKEN_KEY_NAME` environment variable. Default is `INFISICAL_AUTH_JWT`.",
+								Description: "The environment variable name for the OIDC JWT token. This attribute can also be set using the `KMS_OIDC_AUTH_TOKEN_KEY_NAME` environment variable. Default is `KMS_AUTH_JWT`.",
 							},
 						},
 					},
@@ -165,17 +165,17 @@ func (p *infisicalProvider) Schema(ctx context.Context, _ provider.SchemaRequest
 							"identity_id": schema.StringAttribute{
 								Optional:    true,
 								Sensitive:   true,
-								Description: "Machine identity ID. This attribute can also be set using the `INFISICAL_MACHINE_IDENTITY_ID` environment variable",
+								Description: "Machine identity ID. This attribute can also be set using the `KMS_MACHINE_IDENTITY_ID` environment variable",
 							},
 							"service_account_token_path": schema.StringAttribute{
 								Optional:    true,
 								Sensitive:   false,
-								Description: "The path to the service account token. This attribute can also be set using the `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH` environment variable. Default is `/var/run/secrets/kubernetes.io/serviceaccount/token`.",
+								Description: "The path to the service account token. This attribute can also be set using the `KMS_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH` environment variable. Default is `/var/run/secrets/kubernetes.io/serviceaccount/token`.",
 							},
 							"service_account_token": schema.StringAttribute{
 								Optional:    true,
 								Sensitive:   true,
-								Description: "The service account token. This attribute can also be set using the `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN` environment variable",
+								Description: "The service account token. This attribute can also be set using the `KMS_KUBERNETES_SERVICE_ACCOUNT_TOKEN` environment variable",
 							},
 						},
 					},
@@ -186,7 +186,7 @@ func (p *infisicalProvider) Schema(ctx context.Context, _ provider.SchemaRequest
 							"identity_id": schema.StringAttribute{
 								Optional:    true,
 								Sensitive:   true,
-								Description: "Machine identity ID. This attribute can also be set using the `INFISICAL_MACHINE_IDENTITY_ID` environment variable",
+								Description: "Machine identity ID. This attribute can also be set using the `KMS_MACHINE_IDENTITY_ID` environment variable",
 							},
 						},
 					},
@@ -196,10 +196,10 @@ func (p *infisicalProvider) Schema(ctx context.Context, _ provider.SchemaRequest
 	}
 }
 
-func (p *infisicalProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *kmsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// Retrieve provider data from configuration
 
-	var config infisicalProviderModel
+	var config kmsProviderModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 
@@ -211,20 +211,20 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 		resp.Diagnostics.AddError("No authentication credentials provided", "You must define service_token field of the provider")
 	}
 
-	host := os.Getenv(infisical.INFISICAL_HOST_NAME)
+	host := os.Getenv(kmsclient.KMS_HOST_NAME)
 
 	// Service Token
-	serviceToken := os.Getenv(infisical.INFISICAL_SERVICE_TOKEN_NAME)
+	serviceToken := os.Getenv(kmsclient.KMS_SERVICE_TOKEN_NAME)
 
 	// Machine Identity
-	clientId := os.Getenv(infisical.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
-	clientSecret := os.Getenv(infisical.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
-	identityId := os.Getenv(infisical.INFISICAL_MACHINE_IDENTITY_ID_NAME)
-	oidcTokenEnvName := os.Getenv(infisical.INFISICAL_OIDC_AUTH_TOKEN_NAME)
-	token := os.Getenv(infisical.INFISICAL_TOKEN_NAME)
-	serviceAccountToken := os.Getenv(infisical.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_NAME)
-	serviceAccountTokenPath := os.Getenv(infisical.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_NAME)
-	organizationSlug := os.Getenv(infisical.INFISICAL_AUTH_ORGANIZATION_SLUG_ENV_NAME)
+	clientId := os.Getenv(kmsclient.KMS_UNIVERSAL_AUTH_CLIENT_ID_NAME)
+	clientSecret := os.Getenv(kmsclient.KMS_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
+	identityId := os.Getenv(kmsclient.KMS_MACHINE_IDENTITY_ID_NAME)
+	oidcTokenEnvName := os.Getenv(kmsclient.KMS_OIDC_AUTH_TOKEN_NAME)
+	token := os.Getenv(kmsclient.KMS_TOKEN_NAME)
+	serviceAccountToken := os.Getenv(kmsclient.KMS_KUBERNETES_SERVICE_ACCOUNT_TOKEN_NAME)
+	serviceAccountTokenPath := os.Getenv(kmsclient.KMS_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_NAME)
+	organizationSlug := os.Getenv(kmsclient.KMS_AUTH_ORGANIZATION_SLUG_ENV_NAME)
 
 	if !config.Host.IsNull() {
 		host = config.Host.ValueString()
@@ -242,16 +242,16 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 		clientSecret = config.ClientSecret.ValueString()
 	}
 
-	// set default to cloud infisical if host is empty
+	// set default to cloud kms if host is empty
 	if host == "" {
-		host = "https://app.infisical.com"
+		host = "https://kms.hanzo.ai"
 	}
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var authStrategy infisical.AuthStrategyType = ""
+	var authStrategy kmsclient.AuthStrategyType = ""
 
 	if config.Auth != nil {
 		if !config.Auth.OrganizationSlug.IsNull() {
@@ -259,7 +259,7 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 		}
 
 		if config.Auth.Oidc != nil {
-			authStrategy = infisical.AuthStrategy.OIDC_MACHINE_IDENTITY
+			authStrategy = kmsclient.AuthStrategy.OIDC_MACHINE_IDENTITY
 			if !config.Auth.Oidc.IdentityId.IsNull() {
 				identityId = config.Auth.Oidc.IdentityId.ValueString()
 			}
@@ -268,7 +268,7 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 				oidcTokenEnvName = config.Auth.Oidc.TokenEnvName.ValueString()
 			}
 		} else if config.Auth.Universal != nil {
-			authStrategy = infisical.AuthStrategy.UNIVERSAL_MACHINE_IDENTITY
+			authStrategy = kmsclient.AuthStrategy.UNIVERSAL_MACHINE_IDENTITY
 			if !config.Auth.Universal.ClientId.IsNull() {
 				clientId = config.Auth.Universal.ClientId.ValueString()
 			}
@@ -276,7 +276,7 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 				clientSecret = config.Auth.Universal.ClientSecret.ValueString()
 			}
 		} else if config.Auth.Kubernetes != nil {
-			authStrategy = infisical.AuthStrategy.KUBERNETES_MACHINE_IDENTITY
+			authStrategy = kmsclient.AuthStrategy.KUBERNETES_MACHINE_IDENTITY
 			if !config.Auth.Kubernetes.IdentityId.IsNull() {
 				identityId = config.Auth.Kubernetes.IdentityId.ValueString()
 			}
@@ -289,12 +289,12 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 				serviceAccountToken = config.Auth.Kubernetes.Token.ValueString()
 			}
 		} else if config.Auth.AWS != nil {
-			authStrategy = infisical.AuthStrategy.AWS_IAM_MACHINE_IDENTITY
+			authStrategy = kmsclient.AuthStrategy.AWS_IAM_MACHINE_IDENTITY
 			if !config.Auth.AWS.IdentityId.IsNull() {
 				identityId = config.Auth.AWS.IdentityId.ValueString()
 			}
 		} else if config.Auth.Token.ValueString() != "" {
-			authStrategy = infisical.AuthStrategy.TOKEN_MACHINE_IDENTITY
+			authStrategy = kmsclient.AuthStrategy.TOKEN_MACHINE_IDENTITY
 			token = config.Auth.Token.ValueString()
 		}
 	}
@@ -304,14 +304,14 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 		// ? note(daniel): this fix only works for token auth.
 		// ? we currently don't have a way to identify if a user wants to use the different identity-id based auth strategies.
 		// ? We should have a field for specifying the target auth strategy, like we do for the CLI (--method=aws-auth as an example)
-		if envVarToken := os.Getenv(infisical.INFISICAL_TOKEN_NAME); envVarToken != "" {
-			authStrategy = infisical.AuthStrategy.TOKEN_MACHINE_IDENTITY
+		if envVarToken := os.Getenv(kmsclient.KMS_TOKEN_NAME); envVarToken != "" {
+			authStrategy = kmsclient.AuthStrategy.TOKEN_MACHINE_IDENTITY
 			token = envVarToken
 		}
 
 	}
 
-	client, err := infisical.NewClient(infisical.Config{
+	client, err := kmsclient.NewClient(kmsclient.Config{
 		HostURL:                 host,
 		AuthStrategy:            authStrategy,
 		ServiceToken:            serviceToken,
@@ -327,10 +327,10 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Create Infisical API Client",
-			"An unexpected error occurred when creating the Infisical API client. "+
-				"If the error is not clear, please get in touch at infisical.com/slack.\n\n"+
-				"Infisical Client Error: "+err.Error(),
+			"Unable to Create Kms API Client",
+			"An unexpected error occurred when creating the Kms API client. "+
+				"If the error is not clear, please get in touch at hanzo.ai/slack.\n\n"+
+				"Kms Client Error: "+err.Error(),
 		)
 		return
 	}
@@ -343,51 +343,51 @@ func (p *infisicalProvider) Configure(ctx context.Context, req provider.Configur
 }
 
 // DataSources defines the data sources implemented in the provider.
-func (p *infisicalProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+func (p *kmsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		infisicalDatasource.NewSecretDataSource,
-		infisicalDatasource.NewProjectDataSource,
-		infisicalDatasource.NewSecretTagDataSource,
-		infisicalDatasource.NewSecretFolderDataSource,
-		infisicalDatasource.NewGroupsDataSource,
-		infisicalDatasource.NewIdentityDetailsDataSource,
-		infisicalDatasource.NewKMSKeyDataSource,
+		kmsDatasource.NewSecretDataSource,
+		kmsDatasource.NewProjectDataSource,
+		kmsDatasource.NewSecretTagDataSource,
+		kmsDatasource.NewSecretFolderDataSource,
+		kmsDatasource.NewGroupsDataSource,
+		kmsDatasource.NewIdentityDetailsDataSource,
+		kmsDatasource.NewKMSKeyDataSource,
 	}
 }
 
 // Resources defines the resources implemented in the provider.
-func (p *infisicalProvider) Resources(_ context.Context) []func() resource.Resource {
+func (p *kmsProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		infisicalResource.NewSecretResource,
-		infisicalResource.NewProjectResource,
-		infisicalResource.NewProjectUserResource,
-		infisicalResource.NewProjectIdentityResource,
-		infisicalResource.NewProjectRoleResource,
-		infisicalResource.NewOrgRoleResource,
-		infisicalResource.NewProjectIdentitySpecificPrivilegeResource,
-		infisicalResource.NewProjectGroupResource,
-		infisicalResource.NewProjectSecretTagResource,
-		infisicalResource.NewProjectSecretFolderResource,
-		infisicalResource.NewProjectEnvironmentResource,
-		infisicalResource.NewIdentityResource,
-		infisicalResource.NewIdentityUniversalAuthResource,
-		infisicalResource.NewIdentityUniversalAuthClientSecretResource,
-		infisicalResource.NewIdentityAwsAuthResource,
-		infisicalResource.NewIdentityKubernetesAuthResource,
-		infisicalResource.NewIdentityGcpAuthResource,
-		infisicalResource.NewIdentityAzureAuthResource,
-		infisicalResource.NewIdentityOidcAuthResource,
-		infisicalResource.NewIdentityTokenAuthResource,
-		infisicalResource.NewIdentityTokenAuthTokenResource,
-		infisicalResource.NewIntegrationGcpSecretManagerResource,
-		infisicalResource.NewIntegrationAwsParameterStoreResource,
-		infisicalResource.NewIntegrationAwsSecretsManagerResource,
-		infisicalResource.NewIntegrationCircleCiResource,
-		infisicalResource.NewIntegrationDatabricksResource,
-		infisicalResource.NewSecretApprovalPolicyResource,
-		infisicalResource.NewAccessApprovalPolicyResource,
-		infisicalResource.NewProjectSecretImportResource,
-		infisicalResource.NewGroupResource,
+		kmsResource.NewSecretResource,
+		kmsResource.NewProjectResource,
+		kmsResource.NewProjectUserResource,
+		kmsResource.NewProjectIdentityResource,
+		kmsResource.NewProjectRoleResource,
+		kmsResource.NewOrgRoleResource,
+		kmsResource.NewProjectIdentitySpecificPrivilegeResource,
+		kmsResource.NewProjectGroupResource,
+		kmsResource.NewProjectSecretTagResource,
+		kmsResource.NewProjectSecretFolderResource,
+		kmsResource.NewProjectEnvironmentResource,
+		kmsResource.NewIdentityResource,
+		kmsResource.NewIdentityUniversalAuthResource,
+		kmsResource.NewIdentityUniversalAuthClientSecretResource,
+		kmsResource.NewIdentityAwsAuthResource,
+		kmsResource.NewIdentityKubernetesAuthResource,
+		kmsResource.NewIdentityGcpAuthResource,
+		kmsResource.NewIdentityAzureAuthResource,
+		kmsResource.NewIdentityOidcAuthResource,
+		kmsResource.NewIdentityTokenAuthResource,
+		kmsResource.NewIdentityTokenAuthTokenResource,
+		kmsResource.NewIntegrationGcpSecretManagerResource,
+		kmsResource.NewIntegrationAwsParameterStoreResource,
+		kmsResource.NewIntegrationAwsSecretsManagerResource,
+		kmsResource.NewIntegrationCircleCiResource,
+		kmsResource.NewIntegrationDatabricksResource,
+		kmsResource.NewSecretApprovalPolicyResource,
+		kmsResource.NewAccessApprovalPolicyResource,
+		kmsResource.NewProjectSecretImportResource,
+		kmsResource.NewGroupResource,
 		appConnectionResource.NewAppConnectionGcpResource,
 		appConnectionResource.NewAppConnectionAwsResource,
 		appConnectionResource.NewAppConnectionAzureResource,
@@ -435,24 +435,24 @@ func (p *infisicalProvider) Resources(_ context.Context) []func() resource.Resou
 		secretRotationResource.NewSecretRotationAzureClientSecretResource,
 		secretRotationResource.NewSecretRotationAwsIamUserSecretResource,
 		secretRotationResource.NewSecretRotationLdapPasswordResource,
-		infisicalResource.NewProjectTemplateResource,
-		infisicalResource.NewKMSKeyResource,
-		infisicalResource.NewCertManagerInternalCAResource,
-		infisicalResource.NewCertManagerExternalCAACMEResource,
-		infisicalResource.NewCertManagerExternalCAADCSResource,
-		infisicalResource.NewCertManagerCertificatePolicyResource,
-		infisicalResource.NewCertManagerCertificateProfileResource,
-		infisicalResource.NewCertManagerCertificateResource,
-		infisicalResource.NewCertManagerCACertificateResource,
+		kmsResource.NewProjectTemplateResource,
+		kmsResource.NewKMSKeyResource,
+		kmsResource.NewCertManagerInternalCAResource,
+		kmsResource.NewCertManagerExternalCAACMEResource,
+		kmsResource.NewCertManagerExternalCAADCSResource,
+		kmsResource.NewCertManagerCertificatePolicyResource,
+		kmsResource.NewCertManagerCertificateProfileResource,
+		kmsResource.NewCertManagerCertificateResource,
+		kmsResource.NewCertManagerCACertificateResource,
 		externalKmsResource.NewExternalKmsAwsResource,
 	}
 }
 
 // EphemeralResources defines the ephemeral resources implemented in the provider.
-func (p *infisicalProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
+func (p *kmsProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
 	return []func() ephemeral.EphemeralResource{
 		func() ephemeral.EphemeralResource {
-			return infisicalResource.NewEphemeralSecretResource()
+			return kmsResource.NewEphemeralSecretResource()
 		},
 	}
 }

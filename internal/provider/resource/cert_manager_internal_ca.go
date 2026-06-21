@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -40,7 +40,7 @@ func NewCertManagerInternalCAResource() resource.Resource {
 }
 
 type certManagerInternalCAResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type certManagerInternalCAResourceModel struct {
@@ -64,7 +64,7 @@ func (r *certManagerInternalCAResource) Metadata(_ context.Context, req resource
 
 func (r *certManagerInternalCAResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage internal certificate authorities (root or intermediate) in Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create and manage internal certificate authorities (root or intermediate) in Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"project_slug": schema.StringAttribute{
 				Description: "The slug of the cert-manager project",
@@ -170,7 +170,7 @@ func (r *certManagerInternalCAResource) Configure(_ context.Context, req resourc
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -220,23 +220,23 @@ func (r *certManagerInternalCAResource) Create(ctx context.Context, req resource
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading project",
-			"Couldn't read project from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read project from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
 
-	newCA, err := r.client.CreateInternalCA(infisical.CreateInternalCARequest{
+	newCA, err := r.client.CreateInternalCA(kmsclient.CreateInternalCARequest{
 		ProjectId: project.ID,
 		Name:      plan.Name.ValueString(),
 		Status:    plan.Status.ValueString(),
-		Configuration: infisical.CertificateAuthorityConfiguration{
+		Configuration: kmsclient.CertificateAuthorityConfiguration{
 			Type:         plan.Type.ValueString(),
 			CommonName:   plan.CommonName.ValueString(),
 			Organization: plan.Organization.ValueString(),
@@ -251,7 +251,7 @@ func (r *certManagerInternalCAResource) Create(ctx context.Context, req resource
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating CA",
-			"Couldn't create CA in Infisical, unexpected error: "+err.Error(),
+			"Couldn't create CA in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -286,19 +286,19 @@ func (r *certManagerInternalCAResource) Read(ctx context.Context, req resource.R
 		return
 	}
 
-	ca, err := r.client.GetInternalCA(infisical.GetCARequest{
+	ca, err := r.client.GetInternalCA(kmsclient.GetCARequest{
 		CAId: state.Id.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
 
 		resp.Diagnostics.AddError(
 			"Error reading CA",
-			"Couldn't read CA from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read CA from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -385,24 +385,24 @@ func (r *certManagerInternalCAResource) Update(ctx context.Context, req resource
 		return
 	}
 
-	project, err := r.client.GetProject(infisical.GetProjectRequest{
+	project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 		Slug: plan.ProjectSlug.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading project",
-			"Couldn't read project from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read project from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
 
-	_, err = r.client.UpdateInternalCA(infisical.UpdateInternalCARequest{
+	_, err = r.client.UpdateInternalCA(kmsclient.UpdateInternalCARequest{
 		ProjectId: project.ID,
 		CAId:      plan.Id.ValueString(),
 		Name:      plan.Name.ValueString(),
 		Status:    plan.Status.ValueString(),
-		Configuration: infisical.CertificateAuthorityConfiguration{
+		Configuration: kmsclient.CertificateAuthorityConfiguration{
 			Type:         plan.Type.ValueString(),
 			CommonName:   plan.CommonName.ValueString(),
 			Organization: plan.Organization.ValueString(),
@@ -417,7 +417,7 @@ func (r *certManagerInternalCAResource) Update(ctx context.Context, req resource
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating CA",
-			"Couldn't update CA in Infisical, unexpected error: "+err.Error(),
+			"Couldn't update CA in Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -445,14 +445,14 @@ func (r *certManagerInternalCAResource) Delete(ctx context.Context, req resource
 		return
 	}
 
-	_, err := r.client.DeleteInternalCA(infisical.DeleteCARequest{
+	_, err := r.client.DeleteInternalCA(kmsclient.DeleteCARequest{
 		CAId: state.Id.ValueString(),
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting CA",
-			"Couldn't delete CA from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete CA from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -467,12 +467,12 @@ func (r *certManagerInternalCAResource) ImportState(ctx context.Context, req res
 		return
 	}
 
-	ca, err := r.client.GetInternalCA(infisical.GetCARequest{
+	ca, err := r.client.GetInternalCA(kmsclient.GetCARequest{
 		CAId: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Error importing CA",
 				fmt.Sprintf("CA with ID %s not found", req.ID),
@@ -481,19 +481,19 @@ func (r *certManagerInternalCAResource) ImportState(ctx context.Context, req res
 		}
 		resp.Diagnostics.AddError(
 			"Error importing CA",
-			"Couldn't read CA from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read CA from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
 
-	project, err := r.client.GetProjectById(infisical.GetProjectByIdRequest{
+	project, err := r.client.GetProjectById(kmsclient.GetProjectByIdRequest{
 		ID: ca.ProjectId,
 	})
 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error importing CA",
-			"Couldn't read project from Infisical, unexpected error: "+err.Error(),
+			"Couldn't read project from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}

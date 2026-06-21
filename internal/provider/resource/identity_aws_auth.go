@@ -3,11 +3,11 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	kmsstrings "github.com/hanzokms/terraform-provider/internal/pkg/strings"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"strconv"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	infisicalstrings "terraform-provider-infisical/internal/pkg/strings"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -25,7 +25,7 @@ func NewIdentityAwsAuthResource() resource.Resource {
 
 // IdentityAwsAuthResource is the resource implementation.
 type IdentityAwsAuthResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IdentityAwsAuthResourceSourceModel describes the data source data model.
@@ -53,7 +53,7 @@ func (r *IdentityAwsAuthResource) Metadata(_ context.Context, req resource.Metad
 // Schema defines the schema for the resource.
 func (r *IdentityAwsAuthResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create and manage identity aws auth in Infisical.",
+		Description: "Create and manage identity aws auth in Kms.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the aws auth",
@@ -73,13 +73,13 @@ func (r *IdentityAwsAuthResource) Schema(_ context.Context, _ resource.SchemaReq
 			},
 			"allowed_account_ids": schema.ListAttribute{
 				ElementType: types.StringType,
-				Description: "List of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+				Description: "List of trusted AWS account IDs that are allowed to authenticate with Kms.",
 				Optional:    true,
 				Computed:    true,
 			},
 			"allowed_principal_arns": schema.ListAttribute{
 				ElementType: types.StringType,
-				Description: "List of trusted IAM principal ARNs that are allowed to authenticate with Infisical. The values should take one of three forms: `arn:aws:iam::123456789012:user/MyUserName`, `arn:aws:iam::123456789012:role/MyRoleName`, or `arn:aws:iam::123456789012:*`. Using a wildcard in this case allows any IAM principal in the account `123456789012` to authenticate with Infisical under the identity",
+				Description: "List of trusted IAM principal ARNs that are allowed to authenticate with Kms. The values should take one of three forms: `arn:aws:iam::123456789012:user/MyUserName`, `arn:aws:iam::123456789012:role/MyRoleName`, or `arn:aws:iam::123456789012:*`. Using a wildcard in this case allows any IAM principal in the account `123456789012` to authenticate with Kms under the identity",
 				Optional:    true,
 				Computed:    true,
 			},
@@ -121,7 +121,7 @@ func (r *IdentityAwsAuthResource) Configure(_ context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -135,7 +135,7 @@ func (r *IdentityAwsAuthResource) Configure(_ context.Context, req resource.Conf
 	r.client = client
 }
 
-func updateAwsAuthTerraformStateFromApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityAwsAuthResourceModel, newIdentityAwsAuth *infisical.IdentityAwsAuth) {
+func updateAwsAuthTerraformStateFromApi(ctx context.Context, diagnose diag.Diagnostics, plan *IdentityAwsAuthResourceModel, newIdentityAwsAuth *kmsclient.IdentityAwsAuth) {
 	plan.AccessTokenMaxTTL = types.Int64Value(newIdentityAwsAuth.AccessTokenMaxTTL)
 	plan.AccessTokenTTL = types.Int64Value(newIdentityAwsAuth.AccessTokenTTL)
 	plan.AccessTokenNumUsesLimit = types.Int64Value(newIdentityAwsAuth.AccessTokenNumUsesLimit)
@@ -168,13 +168,13 @@ func updateAwsAuthTerraformStateFromApi(ctx context.Context, diagnose diag.Diagn
 		return
 	}
 
-	plan.AllowedPrincipalArns, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityAwsAuth.AllowedPrincipalArns, ","))
+	plan.AllowedPrincipalArns, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityAwsAuth.AllowedPrincipalArns, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
 	}
 
-	plan.AllowedAccountIDs, diags = types.ListValueFrom(ctx, types.StringType, infisicalstrings.StringSplitAndTrim(newIdentityAwsAuth.AllowedAccountIDS, ","))
+	plan.AllowedAccountIDs, diags = types.ListValueFrom(ctx, types.StringType, kmsstrings.StringSplitAndTrim(newIdentityAwsAuth.AllowedAccountIDS, ","))
 	diagnose.Append(diags...)
 	if diagnose.HasError() {
 		return
@@ -204,10 +204,10 @@ func (r *IdentityAwsAuthResource) Create(ctx context.Context, req resource.Creat
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
 
-	allowedPrincipalArns := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedPrincipalArns)
-	allowedAccoundIds := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedAccountIDs)
+	allowedPrincipalArns := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedPrincipalArns)
+	allowedAccoundIds := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedAccountIDs)
 
-	newIdentityAwsAuth, err := r.client.CreateIdentityAwsAuth(infisical.CreateIdentityAwsAuthRequest{
+	newIdentityAwsAuth, err := r.client.CreateIdentityAwsAuth(kmsclient.CreateIdentityAwsAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTTL:          plan.AccessTokenTTL.ValueInt64(),
 		AccessTokenMaxTTL:       plan.AccessTokenMaxTTL.ValueInt64(),
@@ -255,12 +255,12 @@ func (r *IdentityAwsAuthResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	// Get the latest data from the API
-	identityAwsAuth, err := r.client.GetIdentityAwsAuth(infisical.GetIdentityAwsAuthRequest{
+	identityAwsAuth, err := r.client.GetIdentityAwsAuth(kmsclient.GetIdentityAwsAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
@@ -306,10 +306,10 @@ func (r *IdentityAwsAuthResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	accessTokenTrustedIps := tfPlanExpandIpFieldAsApiField(ctx, resp.Diagnostics, plan.AccessTokenTrustedIps)
-	allowedPrincipalArns := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedPrincipalArns)
-	allowedAccoundIds := infisicaltf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedAccountIDs)
+	allowedPrincipalArns := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedPrincipalArns)
+	allowedAccoundIds := kmstf.StringListToGoStringSlice(ctx, resp.Diagnostics, plan.AllowedAccountIDs)
 
-	updatedIdentityAwsAuth, err := r.client.UpdateIdentityAwsAuth(infisical.UpdateIdentityAwsAuthRequest{
+	updatedIdentityAwsAuth, err := r.client.UpdateIdentityAwsAuth(kmsclient.UpdateIdentityAwsAuthRequest{
 		IdentityID:              plan.IdentityID.ValueString(),
 		AccessTokenTrustedIPS:   accessTokenTrustedIps,
 		AccessTokenTTL:          plan.AccessTokenTTL.ValueInt64(),
@@ -355,7 +355,7 @@ func (r *IdentityAwsAuthResource) Delete(ctx context.Context, req resource.Delet
 		return
 	}
 
-	_, err := r.client.RevokeIdentityAwsAuth(infisical.RevokeIdentityAwsAuthRequest{
+	_, err := r.client.RevokeIdentityAwsAuth(kmsclient.RevokeIdentityAwsAuthRequest{
 		IdentityID: state.IdentityID.ValueString(),
 	})
 

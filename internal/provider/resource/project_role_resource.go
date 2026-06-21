@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -35,7 +35,7 @@ func NewProjectRoleResource() resource.Resource {
 
 // projectRoleResource is the resource implementation.
 type projectRoleResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type ProjectRolePermissionV2Entry struct {
@@ -88,13 +88,13 @@ var permissionsObjectType = types.ObjectType{
 // Schema defines the schema for the resource.
 func (r *projectRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create custom project roles & save to Infisical. Only Machine Identity authentication is supported for this data source.",
+		Description: "Create custom project roles & save to Kms. Only Machine Identity authentication is supported for this data source.",
 		Attributes: map[string]schema.Attribute{
 			"slug": schema.StringAttribute{
 				Description: "The slug for the new role",
 				Required:    true,
 				Validators: []validator.String{
-					infisicaltf.SlugRegexValidator,
+					kmstf.SlugRegexValidator,
 				},
 			},
 			"name": schema.StringAttribute{
@@ -118,7 +118,7 @@ func (r *projectRoleResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"permissions_v2": schema.ListNestedAttribute{
 				Optional:    true,
-				Description: "The permissions assigned to the project role. Refer to the documentation here https://infisical.com/docs/internals/permissions for its usage.",
+				Description: "The permissions assigned to the project role. Refer to the documentation here https://hanzo.ai/docs/internals/permissions for its usage.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"action": schema.SetAttribute{
@@ -138,12 +138,12 @@ func (r *projectRoleResource) Schema(_ context.Context, _ resource.SchemaRequest
 						},
 						"conditions": schema.StringAttribute{
 							Optional:    true,
-							Description: "When specified, only matching conditions will be allowed to access given resource. Refer to the documentation in https://infisical.com/docs/internals/permissions#conditions for the complete list of supported properties and operators.",
+							Description: "When specified, only matching conditions will be allowed to access given resource. Refer to the documentation in https://hanzo.ai/docs/internals/permissions#conditions for the complete list of supported properties and operators.",
 							PlanModifiers: []planmodifier.String{
 								pkg.JsonEquivalentModifier{},
 							},
 							Validators: []validator.String{
-								infisicaltf.JsonStringValidator,
+								kmstf.JsonStringValidator,
 							},
 						},
 					},
@@ -151,7 +151,7 @@ func (r *projectRoleResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"permissions": schema.ListNestedAttribute{
 				Optional:    true,
-				Description: "(DEPRECATED, USE permissions_v2. Refer to the migration guide in https://infisical.com/docs/internals/permissions#migrating-from-permission-v1-to-permission-v2) The permissions assigned to the project role",
+				Description: "(DEPRECATED, USE permissions_v2. Refer to the migration guide in https://hanzo.ai/docs/internals/permissions#migrating-from-permission-v1-to-permission-v2) The permissions assigned to the project role",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"action": schema.StringAttribute{
@@ -189,7 +189,7 @@ func (r *projectRoleResource) Configure(_ context.Context, req resource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -238,7 +238,7 @@ func (r *projectRoleResource) Create(ctx context.Context, req resource.CreateReq
 			return
 		}
 
-		projectRolePermissions := make([]infisical.ProjectRolePermissionRequest, 0, len(permissions))
+		projectRolePermissions := make([]kmsclient.ProjectRolePermissionRequest, 0, len(permissions))
 
 		for _, el := range permissions {
 			condition := make(map[string]any)
@@ -255,14 +255,14 @@ func (r *projectRoleResource) Create(ctx context.Context, req resource.CreateReq
 				condition = nil
 			}
 
-			projectRolePermissions = append(projectRolePermissions, infisical.ProjectRolePermissionRequest{
+			projectRolePermissions = append(projectRolePermissions, kmsclient.ProjectRolePermissionRequest{
 				Action:     el.Action.ValueString(),
 				Subject:    el.Subject.ValueString(),
 				Conditions: condition,
 			})
 		}
 
-		newProjectRole, err := r.client.CreateProjectRole(infisical.CreateProjectRoleRequest{
+		newProjectRole, err := r.client.CreateProjectRole(kmsclient.CreateProjectRoleRequest{
 			ProjectSlug: plan.ProjectSlug.ValueString(),
 			Slug:        plan.Slug.ValueString(),
 			Name:        plan.Name.ValueString(),
@@ -280,7 +280,7 @@ func (r *projectRoleResource) Create(ctx context.Context, req resource.CreateReq
 
 		plan.ID = types.StringValue(newProjectRole.Role.ID)
 	} else {
-		project, err := r.client.GetProject(infisical.GetProjectRequest{
+		project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 			Slug: plan.ProjectSlug.ValueString(),
 		})
 
@@ -325,7 +325,7 @@ func (r *projectRoleResource) Create(ctx context.Context, req resource.CreateReq
 			permissions[i] = permMap
 		}
 
-		newProjectRole, err := r.client.CreateProjectRoleV2(infisical.CreateProjectRoleV2Request{
+		newProjectRole, err := r.client.CreateProjectRoleV2(kmsclient.CreateProjectRoleV2Request{
 			ProjectId:   project.ID,
 			Slug:        plan.Slug.ValueString(),
 			Name:        plan.Name.ValueString(),
@@ -372,7 +372,7 @@ func (r *projectRoleResource) Read(ctx context.Context, req resource.ReadRequest
 	// Permissions V1
 	if !state.Permissions.IsNull() {
 		// Get the latest data from the API
-		projectRole, err := r.client.GetProjectRoleBySlug(infisical.GetProjectRoleBySlugRequest{
+		projectRole, err := r.client.GetProjectRoleBySlug(kmsclient.GetProjectRoleBySlugRequest{
 			RoleSlug:    state.Slug.ValueString(),
 			ProjectSlug: state.ProjectSlug.ValueString(),
 		})
@@ -405,7 +405,7 @@ func (r *projectRoleResource) Read(ctx context.Context, req resource.ReadRequest
 				if len(actions) > 1 {
 					resp.Diagnostics.AddWarning(
 						"Drift detected",
-						"Multiple actions are not supported on 'infisical_project_role', use 'infisical_project_role_v2'.",
+						"Multiple actions are not supported on 'kms_project_role', use 'kms_project_role_v2'.",
 					)
 					state.Permissions = types.ListNull(permissionsObjectType)
 					resp.State.Set(ctx, state)
@@ -452,7 +452,7 @@ func (r *projectRoleResource) Read(ctx context.Context, req resource.ReadRequest
 						if !isValid {
 							resp.Diagnostics.AddWarning(
 								"Drift detected",
-								"Environment condition provided are not compatible on 'infisical_project_role', use 'infisical_project_role_v2'.",
+								"Environment condition provided are not compatible on 'kms_project_role', use 'kms_project_role_v2'.",
 							)
 							state.Permissions = types.ListNull(permissionsObjectType)
 							resp.State.Set(ctx, state)
@@ -467,7 +467,7 @@ func (r *projectRoleResource) Read(ctx context.Context, req resource.ReadRequest
 					if !isValid {
 						resp.Diagnostics.AddWarning(
 							"Drift detected",
-							"Secret path condition provided are not compatible on 'infisical_project_role', use 'infisical_project_role_v2'.",
+							"Secret path condition provided are not compatible on 'kms_project_role', use 'kms_project_role_v2'.",
 						)
 						state.Permissions = types.ListNull(permissionsObjectType)
 						resp.State.Set(ctx, state)
@@ -502,7 +502,7 @@ func (r *projectRoleResource) Read(ctx context.Context, req resource.ReadRequest
 
 		state.Permissions = permissionListValue
 	} else {
-		project, err := r.client.GetProject(infisical.GetProjectRequest{
+		project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 			Slug: state.ProjectSlug.ValueString(),
 		})
 
@@ -514,7 +514,7 @@ func (r *projectRoleResource) Read(ctx context.Context, req resource.ReadRequest
 			return
 		}
 
-		projectRole, err := r.client.GetProjectRoleBySlugV2(infisical.GetProjectRoleBySlugV2Request{
+		projectRole, err := r.client.GetProjectRoleBySlugV2(kmsclient.GetProjectRoleBySlugV2Request{
 			ProjectId: project.ID,
 			RoleSlug:  state.Slug.ValueString(),
 		})
@@ -641,7 +641,7 @@ func (r *projectRoleResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 
-		projectRolePermissions := make([]infisical.ProjectRolePermissionRequest, 0, len(permissions))
+		projectRolePermissions := make([]kmsclient.ProjectRolePermissionRequest, 0, len(permissions))
 		for _, el := range permissions {
 			condition := make(map[string]any)
 			if el.Conditions != nil {
@@ -656,14 +656,14 @@ func (r *projectRoleResource) Update(ctx context.Context, req resource.UpdateReq
 			} else {
 				condition = nil
 			}
-			projectRolePermissions = append(projectRolePermissions, infisical.ProjectRolePermissionRequest{
+			projectRolePermissions = append(projectRolePermissions, kmsclient.ProjectRolePermissionRequest{
 				Action:     el.Action.ValueString(),
 				Subject:    el.Subject.ValueString(),
 				Conditions: condition,
 			})
 		}
 
-		_, err := r.client.UpdateProjectRole(infisical.UpdateProjectRoleRequest{
+		_, err := r.client.UpdateProjectRole(kmsclient.UpdateProjectRoleRequest{
 			ProjectSlug: plan.ProjectSlug.ValueString(),
 			RoleId:      plan.ID.ValueString(),
 			Slug:        plan.Slug.ValueString(),
@@ -680,7 +680,7 @@ func (r *projectRoleResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 	} else {
-		project, err := r.client.GetProject(infisical.GetProjectRequest{
+		project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 			Slug: plan.ProjectSlug.ValueString(),
 		})
 
@@ -724,7 +724,7 @@ func (r *projectRoleResource) Update(ctx context.Context, req resource.UpdateReq
 			permissions[i] = permMap
 		}
 
-		_, err = r.client.UpdateProjectRoleV2(infisical.UpdateProjectRoleV2Request{
+		_, err = r.client.UpdateProjectRoleV2(kmsclient.UpdateProjectRoleV2Request{
 			ProjectId:   project.ID,
 			RoleId:      plan.ID.ValueString(),
 			Slug:        plan.Slug.ValueString(),
@@ -767,7 +767,7 @@ func (r *projectRoleResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	_, err := r.client.DeleteProjectRole(infisical.DeleteProjectRoleRequest{
+	_, err := r.client.DeleteProjectRole(kmsclient.DeleteProjectRoleRequest{
 		ProjectSlug: state.ProjectSlug.ValueString(),
 		RoleId:      state.ID.ValueString(),
 	})

@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -21,7 +21,7 @@ const AppConnectionSupabaseAuthMethodAccessToken = "access-token"
 
 func NewAppConnectionSupabaseResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppSupabase,
+		App:               kmsclient.AppConnectionAppSupabase,
 		AppConnectionName: "Supabase",
 		ResourceTypeName:  "_app_connection_supabase",
 		AllowedMethods:    []string{AppConnectionSupabaseAuthMethodAccessToken},

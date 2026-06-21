@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
 
 	"time"
 
@@ -36,7 +36,7 @@ func NewProjectIdentitySpecificPrivilegeResource() resource.Resource {
 
 // projectIdentitySpecificPrivilegeResourceResource is the resource implementation.
 type projectIdentitySpecificPrivilegeResourceResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type IdentityPermissionV2Entry struct {
@@ -80,7 +80,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Metadata(_ context.Co
 // Schema defines the schema for the resource.
 func (r *projectIdentitySpecificPrivilegeResourceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create additional privileges for identities & save to Infisical. Only Machine Identity authentication is supported for this data source.",
+		Description: "Create additional privileges for identities & save to Kms. Only Machine Identity authentication is supported for this data source.",
 		Attributes: map[string]schema.Attribute{
 			"identity_id": schema.StringAttribute{
 				Description: "The identity id to create identity specific privilege",
@@ -96,7 +96,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Schema(_ context.Cont
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 				Validators: []validator.String{
-					infisicaltf.SlugRegexValidator,
+					kmstf.SlugRegexValidator,
 				},
 			},
 			"id": schema.StringAttribute{
@@ -136,7 +136,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Schema(_ context.Cont
 			},
 			"permission": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "(DEPRECATED, USE permissions_v2. Refer to the migration guide in https://infisical.com/docs/internals/permissions#migrating-from-permission-v1-to-permission-v2) The permissions assigned to the project identity specific privilege",
+				Description: "(DEPRECATED, USE permissions_v2. Refer to the migration guide in https://hanzo.ai/docs/internals/permissions#migrating-from-permission-v1-to-permission-v2) The permissions assigned to the project identity specific privilege",
 				Attributes: map[string]schema.Attribute{
 					"actions": schema.ListAttribute{
 						ElementType: types.StringType,
@@ -165,7 +165,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Schema(_ context.Cont
 			},
 			"permissions_v2": schema.ListNestedAttribute{
 				Optional:    true,
-				Description: "The permissions assigned to the project identity specific privilege. Refer to the documentation here https://infisical.com/docs/internals/permissions for its usage.",
+				Description: "The permissions assigned to the project identity specific privilege. Refer to the documentation here https://hanzo.ai/docs/internals/permissions for its usage.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"action": schema.SetAttribute{
@@ -185,12 +185,12 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Schema(_ context.Cont
 						},
 						"conditions": schema.StringAttribute{
 							Optional:    true,
-							Description: "When specified, only matching conditions will be allowed to access given resource. Refer to the documentation in https://infisical.com/docs/internals/permissions#conditions for the complete list of supported properties and operators.",
+							Description: "When specified, only matching conditions will be allowed to access given resource. Refer to the documentation in https://hanzo.ai/docs/internals/permissions#conditions for the complete list of supported properties and operators.",
 							PlanModifiers: []planmodifier.String{
 								pkg.JsonEquivalentModifier{},
 							},
 							Validators: []validator.String{
-								infisicaltf.JsonStringValidator,
+								kmstf.JsonStringValidator,
 							},
 						},
 					},
@@ -206,7 +206,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Configure(_ context.C
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -267,7 +267,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Create(ctx context.Co
 		for _, action := range planPermissionActions {
 			actions = append(actions, action.ValueString())
 		}
-		privilegePermission := infisical.ProjectSpecificPrivilegePermissionRequest{
+		privilegePermission := kmsclient.ProjectSpecificPrivilegePermissionRequest{
 			Actions:    actions,
 			Subject:    plan.Permission.Subject.ValueString(),
 			Conditions: condition,
@@ -298,7 +298,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Create(ctx context.Co
 				temporaryRange = "1h"
 			}
 
-			newProjectRole, err := r.client.CreateTemporaryProjectIdentitySpecificPrivilege(infisical.CreateTemporaryProjectIdentitySpecificPrivilegeRequest{
+			newProjectRole, err := r.client.CreateTemporaryProjectIdentitySpecificPrivilege(kmsclient.CreateTemporaryProjectIdentitySpecificPrivilegeRequest{
 				ProjectSlug:              plan.ProjectSlug.ValueString(),
 				Slug:                     plan.Slug.ValueString(),
 				IdentityId:               plan.IdentityID.ValueString(),
@@ -322,7 +322,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Create(ctx context.Co
 			plan.TemporaryRange = types.StringValue(newProjectRole.Privilege.TemporaryRange)
 			plan.TemporaryMode = types.StringValue(newProjectRole.Privilege.TemporaryMode)
 		} else {
-			newProjectRole, err := r.client.CreatePermanentProjectIdentitySpecificPrivilege(infisical.CreatePermanentProjectIdentitySpecificPrivilegeRequest{
+			newProjectRole, err := r.client.CreatePermanentProjectIdentitySpecificPrivilege(kmsclient.CreatePermanentProjectIdentitySpecificPrivilegeRequest{
 				ProjectSlug: plan.ProjectSlug.ValueString(),
 				Slug:        plan.Slug.ValueString(),
 				IdentityId:  plan.IdentityID.ValueString(),
@@ -345,7 +345,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Create(ctx context.Co
 		}
 	} else {
 		// Permission V2
-		project, err := r.client.GetProject(infisical.GetProjectRequest{
+		project, err := r.client.GetProject(kmsclient.GetProjectRequest{
 			Slug: plan.ProjectSlug.ValueString(),
 		})
 
@@ -415,12 +415,12 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Create(ctx context.Co
 			temporaryRange = "1h"
 		}
 
-		newProjectRole, err := r.client.CreateProjectIdentitySpecificPrivilegeV2(infisical.CreateProjectIdentitySpecificPrivilegeV2Request{
+		newProjectRole, err := r.client.CreateProjectIdentitySpecificPrivilegeV2(kmsclient.CreateProjectIdentitySpecificPrivilegeV2Request{
 			ProjectId:   project.ID,
 			Slug:        plan.Slug.ValueString(),
 			IdentityId:  plan.IdentityID.ValueString(),
 			Permissions: permissions,
-			Type: infisical.CreateProjectIdentitySpecificPrivilegeV2Type{
+			Type: kmsclient.CreateProjectIdentitySpecificPrivilegeV2Type{
 				IsTemporary:              isTemporary,
 				TemporaryMode:            temporaryMode,
 				TemporaryRange:           temporaryRange,
@@ -479,7 +479,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Read(ctx context.Cont
 
 	if state.Permission != nil {
 		// Permission V1
-		projectIdentitySpecificPrivilegeResource, err := r.client.GetProjectIdentitySpecificPrivilegeBySlug(infisical.GetProjectIdentitySpecificPrivilegeRequest{
+		projectIdentitySpecificPrivilegeResource, err := r.client.GetProjectIdentitySpecificPrivilegeBySlug(kmsclient.GetProjectIdentitySpecificPrivilegeRequest{
 			PrivilegeSlug: state.Slug.ValueString(),
 			ProjectSlug:   state.ProjectSlug.ValueString(),
 			IdentityID:    state.IdentityID.ValueString(),
@@ -583,7 +583,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Read(ctx context.Cont
 		}
 	} else {
 		// Permission V2
-		projectIdentitySpecificPrivilegeResource, err := r.client.GetProjectIdentitySpecificPrivilegeV2(infisical.GetProjectIdentitySpecificPrivilegeV2Request{
+		projectIdentitySpecificPrivilegeResource, err := r.client.GetProjectIdentitySpecificPrivilegeV2(kmsclient.GetProjectIdentitySpecificPrivilegeV2Request{
 			ID: state.ID.ValueString(),
 		})
 
@@ -729,7 +729,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Update(ctx context.Co
 		for _, action := range planPermissionActions {
 			actions = append(actions, action.ValueString())
 		}
-		privilegePermission := infisical.ProjectSpecificPrivilegePermissionRequest{
+		privilegePermission := kmsclient.ProjectSpecificPrivilegePermissionRequest{
 			Actions:    actions,
 			Subject:    plan.Permission.Subject.ValueString(),
 			Conditions: condition,
@@ -759,11 +759,11 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Update(ctx context.Co
 			temporaryRange = "1h"
 		}
 
-		updatedSpecificPrivilege, err := r.client.UpdateProjectIdentitySpecificPrivilege(infisical.UpdateProjectIdentitySpecificPrivilegeRequest{
+		updatedSpecificPrivilege, err := r.client.UpdateProjectIdentitySpecificPrivilege(kmsclient.UpdateProjectIdentitySpecificPrivilegeRequest{
 			ProjectSlug:   plan.ProjectSlug.ValueString(),
 			PrivilegeSlug: state.Slug.ValueString(),
 			IdentityId:    plan.IdentityID.ValueString(),
-			Details: infisical.UpdateProjectIdentitySpecificPrivilegeDataRequest{
+			Details: kmsclient.UpdateProjectIdentitySpecificPrivilegeDataRequest{
 				Slug:                     plan.Slug.ValueString(),
 				Permissions:              privilegePermission,
 				IsTemporary:              isTemporary,
@@ -851,11 +851,11 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Update(ctx context.Co
 			temporaryRange = "1h"
 		}
 
-		updatedSpecificPrivilege, err := r.client.UpdateProjectIdentitySpecificPrivilegeV2(infisical.UpdateProjectIdentitySpecificPrivilegeV2Request{
+		updatedSpecificPrivilege, err := r.client.UpdateProjectIdentitySpecificPrivilegeV2(kmsclient.UpdateProjectIdentitySpecificPrivilegeV2Request{
 			ID:          plan.ID.ValueString(),
 			Slug:        plan.Slug.ValueString(),
 			Permissions: permissions,
-			Type: infisical.UpdateProjectIdentitySpecificPrivilegeV2Type{
+			Type: kmsclient.UpdateProjectIdentitySpecificPrivilegeV2Type{
 				IsTemporary:              isTemporary,
 				TemporaryMode:            temporaryMode,
 				TemporaryRange:           temporaryRange,
@@ -910,7 +910,7 @@ func (r *projectIdentitySpecificPrivilegeResourceResource) Delete(ctx context.Co
 		return
 	}
 
-	_, err := r.client.DeleteProjectIdentitySpecificPrivilege(infisical.DeleteProjectIdentitySpecificPrivilegeRequest{
+	_, err := r.client.DeleteProjectIdentitySpecificPrivilege(kmsclient.DeleteProjectIdentitySpecificPrivilegeRequest{
 		ProjectSlug:   state.ProjectSlug.ValueString(),
 		IdentityId:    state.IdentityID.ValueString(),
 		PrivilegeSlug: state.Slug.ValueString(),

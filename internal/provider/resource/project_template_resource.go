@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
-	pkg "terraform-provider-infisical/internal/pkg/modifiers"
-	infisicaltf "terraform-provider-infisical/internal/pkg/terraform"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
+	pkg "github.com/hanzokms/terraform-provider/internal/pkg/modifiers"
+	kmstf "github.com/hanzokms/terraform-provider/internal/pkg/terraform"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -25,7 +25,7 @@ var (
 )
 
 type ProjectTemplateResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type PermissionModel struct {
@@ -67,7 +67,7 @@ func (r *ProjectTemplateResource) Metadata(_ context.Context, req resource.Metad
 
 func (r *ProjectTemplateResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create project templates & save to Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "Create project templates & save to Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The ID of the project template",
@@ -85,7 +85,7 @@ func (r *ProjectTemplateResource) Schema(_ context.Context, _ resource.SchemaReq
 				Optional:    true,
 			},
 			"type": schema.StringAttribute{
-				Description: "The type of the project template. Refer to the documentation here https://infisical.com/docs/api-reference/endpoints/project-templates/create#body-type for the available options",
+				Description: "The type of the project template. Refer to the documentation here https://hanzo.ai/docs/api-reference/endpoints/project-templates/create#body-type for the available options",
 				Required:    true,
 			},
 			"roles": schema.ListNestedAttribute{
@@ -105,7 +105,7 @@ func (r *ProjectTemplateResource) Schema(_ context.Context, _ resource.SchemaReq
 						"permissions": schema.ListNestedAttribute{
 							Optional:    true,
 							Computed:    true,
-							Description: "The permissions assigned to the role. Refer to the documentation here https://infisical.com/docs/api-reference/endpoints/project-templates/create#body-roles-permissions for its usage.",
+							Description: "The permissions assigned to the role. Refer to the documentation here https://hanzo.ai/docs/api-reference/endpoints/project-templates/create#body-roles-permissions for its usage.",
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"action": schema.SetAttribute{
@@ -125,12 +125,12 @@ func (r *ProjectTemplateResource) Schema(_ context.Context, _ resource.SchemaReq
 									},
 									"conditions": schema.StringAttribute{
 										Optional:    true,
-										Description: "When specified, only matching conditions will be allowed to access given resource. Refer to the documentation in https://infisical.com/docs/internals/permissions#conditions for the complete list of supported properties and operators.",
+										Description: "When specified, only matching conditions will be allowed to access given resource. Refer to the documentation in https://hanzo.ai/docs/internals/permissions#conditions for the complete list of supported properties and operators.",
 										PlanModifiers: []planmodifier.String{
 											pkg.JsonEquivalentModifier{},
 										},
 										Validators: []validator.String{
-											infisicaltf.JsonStringValidator,
+											kmstf.JsonStringValidator,
 										},
 									},
 								},
@@ -170,7 +170,7 @@ func (r *ProjectTemplateResource) Configure(_ context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -203,8 +203,8 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	// Map the plan data to the Infisical CreateProjectTemplateRequest
-	var environments []infisical.Environment
+	// Map the plan data to the Kms CreateProjectTemplateRequest
+	var environments []kmsclient.Environment
 
 	if !plan.Environments.IsNull() && !plan.Environments.IsUnknown() {
 		environments, diags = r.unmarshalEnvironments(plan.Environments)
@@ -213,10 +213,10 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 			return
 		}
 	} else if plan.Type.ValueString() == "secret-manager" {
-		environments = []infisical.Environment{}
+		environments = []kmsclient.Environment{}
 	}
 
-	var roles []infisical.Role
+	var roles []kmsclient.Role
 
 	if !plan.Roles.IsNull() && !plan.Roles.IsUnknown() {
 		roles, diags = r.unmarshalRoles(plan.Roles)
@@ -226,7 +226,7 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 		}
 	}
 
-	res, err := r.client.CreateProjectTemplate(infisical.CreateProjectTemplateRequest{
+	res, err := r.client.CreateProjectTemplate(kmsclient.CreateProjectTemplateRequest{
 		Name:         plan.Name.ValueString(),
 		Description:  plan.Description.ValueString(),
 		Type:         plan.Type.ValueString(),
@@ -242,7 +242,7 @@ func (r *ProjectTemplateResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	// Map the Infisical project template to the resource model
+	// Map the Kms project template to the resource model
 	plan.ID = types.StringValue(res.ID)
 	plan.Name = types.StringValue(res.Name)
 	plan.Description = types.StringValue(res.Description)
@@ -286,11 +286,11 @@ func (r *ProjectTemplateResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	// Fetch the project template from Infisical
+	// Fetch the project template from Kms
 	template, err := r.client.GetProjectTemplateById(plan.ID.ValueString())
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -301,7 +301,7 @@ func (r *ProjectTemplateResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	// Map the Infisical project template to the resource model
+	// Map the Kms project template to the resource model
 	plan.ID = types.StringValue(template.ID)
 	plan.Name = types.StringValue(template.Name)
 	plan.Description = types.StringValue(template.Description)
@@ -354,8 +354,8 @@ func (r *ProjectTemplateResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	var roles []infisical.Role
-	var environments []infisical.Environment
+	var roles []kmsclient.Role
+	var environments []kmsclient.Environment
 
 	if !plan.Roles.IsNull() && !plan.Roles.IsUnknown() {
 		roles, diags = r.unmarshalRoles(plan.Roles)
@@ -373,14 +373,14 @@ func (r *ProjectTemplateResource) Update(ctx context.Context, req resource.Updat
 			return
 		}
 	} else if plan.Type.ValueString() == "secret-manager" {
-		environments = []infisical.Environment{}
+		environments = []kmsclient.Environment{}
 	}
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	apiResp, err := r.client.UpdateProjectTemplate(infisical.UpdateProjectTemplateRequest{
+	apiResp, err := r.client.UpdateProjectTemplate(kmsclient.UpdateProjectTemplateRequest{
 		ID:           plan.ID.ValueString(),
 		Name:         plan.Name.ValueString(),
 		Description:  plan.Description.ValueString(),
@@ -432,11 +432,11 @@ func (r *ProjectTemplateResource) Delete(ctx context.Context, req resource.Delet
 		return
 	}
 
-	// Call the Infisical API to delete the project template
+	// Call the Kms API to delete the project template
 	_, err := r.client.DeleteProjectTemplate(state.ID.ValueString())
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			return
 		}
 
@@ -448,7 +448,7 @@ func (r *ProjectTemplateResource) Delete(ctx context.Context, req resource.Delet
 	}
 }
 
-func (r ProjectTemplateResource) marshalRoles(roles []infisical.Role) (types.List, diag.Diagnostics) {
+func (r ProjectTemplateResource) marshalRoles(roles []kmsclient.Role) (types.List, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	var tfValues []attr.Value
 
@@ -536,8 +536,8 @@ func (r ProjectTemplateResource) marshalRoles(roles []infisical.Role) (types.Lis
 	return tfList, diags
 }
 
-func (r ProjectTemplateResource) unmarshalRoles(tfRoles types.List) ([]infisical.Role, diag.Diagnostics) {
-	roles := make([]infisical.Role, len(tfRoles.Elements()))
+func (r ProjectTemplateResource) unmarshalRoles(tfRoles types.List) ([]kmsclient.Role, diag.Diagnostics) {
+	roles := make([]kmsclient.Role, len(tfRoles.Elements()))
 	var diags diag.Diagnostics
 
 	for index, roleVal := range tfRoles.Elements() {
@@ -548,7 +548,7 @@ func (r ProjectTemplateResource) unmarshalRoles(tfRoles types.List) ([]infisical
 
 		attrs := roleObj.Attributes()
 
-		role := infisical.Role{}
+		role := kmsclient.Role{}
 
 		if name, ok := attrs["name"].(types.String); ok {
 			role.Name = name.ValueString()
@@ -563,11 +563,11 @@ func (r ProjectTemplateResource) unmarshalRoles(tfRoles types.List) ([]infisical
 		}
 
 		if list, ok := attrs["permissions"].(types.List); ok {
-			permissions := []infisical.Permission{}
+			permissions := []kmsclient.Permission{}
 
 			for _, permVal := range list.Elements() {
 
-				permission := infisical.Permission{
+				permission := kmsclient.Permission{
 					Conditions: make(map[string]any),
 				}
 
@@ -646,7 +646,7 @@ func (r ProjectTemplateResource) unmarshalRoles(tfRoles types.List) ([]infisical
 	return roles, diags
 }
 
-func (r ProjectTemplateResource) marshalEnvironments(envs []infisical.Environment) (types.List, diag.Diagnostics) {
+func (r ProjectTemplateResource) marshalEnvironments(envs []kmsclient.Environment) (types.List, diag.Diagnostics) {
 	var envValues []attr.Value
 
 	// Define the Terraform type schema for each environment object
@@ -670,8 +670,8 @@ func (r ProjectTemplateResource) marshalEnvironments(envs []infisical.Environmen
 	return types.ListValue(envObjectType, envValues)
 }
 
-func (r ProjectTemplateResource) unmarshalEnvironments(tfList types.List) ([]infisical.Environment, diag.Diagnostics) {
-	envs := []infisical.Environment{}
+func (r ProjectTemplateResource) unmarshalEnvironments(tfList types.List) ([]kmsclient.Environment, diag.Diagnostics) {
+	envs := []kmsclient.Environment{}
 	var diags diag.Diagnostics
 
 	// Make sure we only process if the list is known and not null
@@ -696,7 +696,7 @@ func (r ProjectTemplateResource) unmarshalEnvironments(tfList types.List) ([]inf
 		slug, _ := attrs["slug"].(types.String)
 		position, _ := attrs["position"].(types.Int64)
 
-		env := infisical.Environment{
+		env := kmsclient.Environment{
 			Name:     name.ValueString(),
 			Slug:     slug.ValueString(),
 			Position: position.ValueInt64(),

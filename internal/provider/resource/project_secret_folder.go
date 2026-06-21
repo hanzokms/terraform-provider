@@ -3,9 +3,9 @@ package resource
 import (
 	"context"
 	"fmt"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 	"path/filepath"
 	"strings"
-	infisical "terraform-provider-infisical/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -23,7 +23,7 @@ func NewProjectSecretFolderResource() resource.Resource {
 
 // projectSecretFolderResource is the resource implementation.
 type projectSecretFolderResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // projectSecretFolderResourceSourceModel describes the data source data model.
@@ -46,7 +46,7 @@ func (r *projectSecretFolderResource) Metadata(_ context.Context, req resource.M
 // Schema defines the schema for the resource.
 func (r *projectSecretFolderResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Create secret folder & save to Infisical.",
+		Description: "Create secret folder & save to Kms.",
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
 				Description: "The name for the folder",
@@ -63,7 +63,7 @@ func (r *projectSecretFolderResource) Schema(_ context.Context, _ resource.Schem
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"project_id": schema.StringAttribute{
-				Description:   "The Infisical project ID (Required for Machine Identity auth, and service tokens with multiple scopes)",
+				Description:   "The Kms project ID (Required for Machine Identity auth, and service tokens with multiple scopes)",
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -96,7 +96,7 @@ func (r *projectSecretFolderResource) Configure(_ context.Context, req resource.
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -128,7 +128,7 @@ func (r *projectSecretFolderResource) Create(ctx context.Context, req resource.C
 		return
 	}
 
-	newProjectSecretFolder, err := r.client.CreateSecretFolder(infisical.CreateSecretFolderRequest{
+	newProjectSecretFolder, err := r.client.CreateSecretFolder(kmsclient.CreateSecretFolderRequest{
 		Name:        plan.Name.ValueString(),
 		ProjectID:   plan.ProjectID.ValueString(),
 		Environment: plan.EnvironmentSlug.ValueString(),
@@ -138,7 +138,7 @@ func (r *projectSecretFolderResource) Create(ctx context.Context, req resource.C
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating project secret folder",
-			"Couldn't save folder to Infisical, unexpected error: "+err.Error(),
+			"Couldn't save folder to Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -174,18 +174,18 @@ func (r *projectSecretFolderResource) Read(ctx context.Context, req resource.Rea
 	}
 
 	// Get the latest data from the API
-	secretFolder, err := r.client.GetSecretFolderByID(infisical.GetSecretFolderByIDRequest{
+	secretFolder, err := r.client.GetSecretFolderByID(kmsclient.GetSecretFolderByIDRequest{
 		ID: state.ID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		} else {
 			resp.Diagnostics.AddError(
 				"Error fetching folders from your project",
-				"Couldn't read project secret folder from Infisical, unexpected error: "+err.Error(),
+				"Couldn't read project secret folder from Kms, unexpected error: "+err.Error(),
 			)
 			return
 		}
@@ -225,7 +225,7 @@ func (r *projectSecretFolderResource) Update(ctx context.Context, req resource.U
 		return
 	}
 
-	updatedFolder, err := r.client.UpdateSecretFolder(infisical.UpdateSecretFolderRequest{
+	updatedFolder, err := r.client.UpdateSecretFolder(kmsclient.UpdateSecretFolderRequest{
 		ProjectID:   plan.ProjectID.ValueString(),
 		Name:        plan.Name.ValueString(),
 		ID:          plan.ID.ValueString(),
@@ -236,7 +236,7 @@ func (r *projectSecretFolderResource) Update(ctx context.Context, req resource.U
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating secret folder",
-			"Couldn't update secret folder from Infisical, unexpected error: "+err.Error(),
+			"Couldn't update secret folder from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -269,7 +269,7 @@ func (r *projectSecretFolderResource) Delete(ctx context.Context, req resource.D
 		return
 	}
 
-	_, err := r.client.DeleteSecretFolder(infisical.DeleteSecretFolderRequest{
+	_, err := r.client.DeleteSecretFolder(kmsclient.DeleteSecretFolderRequest{
 		ID:          state.ID.ValueString(),
 		ProjectID:   state.ProjectID.ValueString(),
 		Environment: state.EnvironmentSlug.ValueString(),
@@ -280,7 +280,7 @@ func (r *projectSecretFolderResource) Delete(ctx context.Context, req resource.D
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting secret folder",
-			"Couldn't delete secret folder from Infisical, unexpected error: "+err.Error(),
+			"Couldn't delete secret folder from Kms, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -291,12 +291,12 @@ func (r *projectSecretFolderResource) ImportState(ctx context.Context, req resou
 
 	// secret_folder_id
 
-	folder, err := r.client.GetSecretFolderByID(infisical.GetSecretFolderByIDRequest{
+	folder, err := r.client.GetSecretFolderByID(kmsclient.GetSecretFolderByIDRequest{
 		ID: req.ID,
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.Diagnostics.AddError(
 				"Secrets folder not found",
 				"The secrets folder with the given ID was not found",
@@ -304,7 +304,7 @@ func (r *projectSecretFolderResource) ImportState(ctx context.Context, req resou
 		} else {
 			resp.Diagnostics.AddError(
 				"Error fetching secrets folder",
-				"Couldn't fetch secrets folder from Infisical, unexpected error: "+err.Error(),
+				"Couldn't fetch secrets folder from Kms, unexpected error: "+err.Error(),
 			)
 		}
 		return

@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -22,7 +22,7 @@ func NewEphemeralSecretResource() ephemeral.EphemeralResourceWithConfigure {
 
 // secretResource is the resource implementation.
 type ephemeralSecretResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 type ephemeralSecretResourceModel struct {
@@ -42,7 +42,7 @@ func (r *ephemeralSecretResource) Metadata(_ context.Context, req ephemeral.Meta
 // Schema defines the schema for the resource.
 func (r *ephemeralSecretResource) Schema(_ context.Context, _ ephemeral.SchemaRequest, resp *ephemeral.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Read ephemeral secrets from Infisical",
+		Description: "Read ephemeral secrets from Kms",
 		Attributes: map[string]schema.Attribute{
 			"folder_path": schema.StringAttribute{
 				Description: "The path to the folder where the given secret resides",
@@ -60,7 +60,7 @@ func (r *ephemeralSecretResource) Schema(_ context.Context, _ ephemeral.SchemaRe
 				Computed:    false,
 			},
 			"workspace_id": schema.StringAttribute{
-				Description: "The Infisical project ID",
+				Description: "The Kms project ID",
 				Required:    true,
 				Computed:    false,
 			},
@@ -84,11 +84,11 @@ func (r *ephemeralSecretResource) Configure(_ context.Context, req ephemeral.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *infisical.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *kmsclient.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -101,7 +101,7 @@ func (r *ephemeralSecretResource) Open(ctx context.Context, req ephemeral.OpenRe
 	if r.client == nil {
 		resp.Diagnostics.AddError(
 			"Client not configured",
-			"The provider client is nil. Please report this issue to the Infisical provider developers.",
+			"The provider client is nil. Please report this issue to the Kms provider developers.",
 		)
 		return
 	}
@@ -115,13 +115,13 @@ func (r *ephemeralSecretResource) Open(ctx context.Context, req ephemeral.OpenRe
 
 	if !r.client.Config.IsMachineIdentityAuth {
 		resp.Diagnostics.AddError(
-			"Error Reading Infisical secret",
+			"Error Reading Kms secret",
 			"Unknown authentication strategy",
 		)
 		return
 	}
 
-	res, err := r.client.GetSingleRawSecretByNameV3(infisical.GetSingleSecretByNameV3Request{
+	res, err := r.client.GetSingleRawSecretByNameV3(kmsclient.GetSingleSecretByNameV3Request{
 		SecretName:  config.Name.ValueString(),
 		Type:        "shared",
 		WorkspaceId: config.WorkspaceId.ValueString(),
@@ -131,8 +131,8 @@ func (r *ephemeralSecretResource) Open(ctx context.Context, req ephemeral.OpenRe
 
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Reading Infisical secret",
-			"Could not read Infisical secret named "+config.Name.ValueString()+": "+err.Error(),
+			"Error Reading Kms secret",
+			"Could not read Kms secret named "+config.Name.ValueString()+": "+err.Error(),
 		)
 		return
 	}

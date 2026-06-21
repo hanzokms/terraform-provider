@@ -1,7 +1,7 @@
-package infisicalclient
+package kmsclient
 
 import (
-	"terraform-provider-infisical/internal/errors"
+	"github.com/hanzokms/terraform-provider/internal/errors"
 )
 
 const (

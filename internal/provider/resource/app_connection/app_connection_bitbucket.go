@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -21,7 +21,7 @@ const AppConnectionBitbucketAuthMethodApiToken = "api-token"
 
 func NewAppConnectionBitbucketResource() resource.Resource {
 	return &AppConnectionBaseResource{
-		App:               infisical.AppConnectionAppBitbucket,
+		App:               kmsclient.AppConnectionAppBitbucket,
 		AppConnectionName: "Bitbucket",
 		ResourceTypeName:  "_app_connection_bitbucket",
 		AllowedMethods:    []string{AppConnectionBitbucketAuthMethodApiToken},

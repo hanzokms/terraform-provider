@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -27,10 +27,10 @@ type SecretSync1PasswordSyncOptionsModel struct {
 
 func NewSecretSync1PasswordResource() resource.Resource {
 	return &SecretSyncBaseResource{
-		App:              infisical.SecretSyncApp1Password,
+		App:              kmsclient.SecretSyncApp1Password,
 		SyncName:         "1Password",
 		ResourceTypeName: "_secret_sync_1password",
-		AppConnection:    infisical.AppConnectionApp1Password,
+		AppConnection:    kmsclient.AppConnectionApp1Password,
 		CanImportSecrets: true,
 		DestinationConfigAttributes: map[string]schema.Attribute{
 			"vault_id": schema.StringAttribute{
@@ -39,18 +39,18 @@ func NewSecretSync1PasswordResource() resource.Resource {
 			},
 			"value_label": schema.StringAttribute{
 				Optional:    true,
-				Description: "The label of the 1Password item field which will hold your secret value. For example, if you were to sync Infisical secret 'foo: bar', the 1Password item equivalent would have an item title of 'foo', and a field on that item 'value: bar'. The field label 'value' is what gets changed by this option",
+				Description: "The label of the 1Password item field which will hold your secret value. For example, if you were to sync Kms secret 'foo: bar', the 1Password item equivalent would have an item title of 'foo', and a field on that item 'value: bar'. The field label 'value' is what gets changed by this option",
 			},
 		},
 		SyncOptionsAttributes: map[string]schema.Attribute{
 			"initial_sync_behavior": schema.StringAttribute{
 				Required:    true,
-				Description: "Specify how Infisical should resolve the initial sync to the destination. Supported options: overwrite-destination, import-prioritize-source, import-prioritize-destination",
+				Description: "Specify how Kms should resolve the initial sync to the destination. Supported options: overwrite-destination, import-prioritize-source, import-prioritize-destination",
 			},
 			"disable_secret_deletion": schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "When set to true, Infisical will not remove secrets from 1Password. Enable this option if you intend to manage some secrets manually outside of Infisical.",
+				Description: "When set to true, Kms will not remove secrets from 1Password. Enable this option if you intend to manage some secrets manually outside of Kms.",
 				Default:     booldefault.StaticBool(false),
 			},
 			"key_schema": schema.StringAttribute{
@@ -90,7 +90,7 @@ func NewSecretSync1PasswordResource() resource.Resource {
 			return syncOptionsMap, nil
 		},
 
-		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadSyncOptionsFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 
 			initialSyncBehavior, ok := secretSync.SyncOptions["initialSyncBehavior"].(string)
 			if !ok {
@@ -175,7 +175,7 @@ func NewSecretSync1PasswordResource() resource.Resource {
 
 			return destinationConfig, diags
 		},
-		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync infisical.SecretSync) (types.Object, diag.Diagnostics) {
+		ReadDestinationConfigFromApi: func(ctx context.Context, secretSync kmsclient.SecretSync) (types.Object, diag.Diagnostics) {
 			var diags diag.Diagnostics
 
 			destinationConfig := map[string]attr.Value{

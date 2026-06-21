@@ -1,4 +1,4 @@
-package infisicalclient
+package kmsclient
 
 import (
 	"time"

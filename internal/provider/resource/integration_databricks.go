@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	infisical "terraform-provider-infisical/internal/client"
+	kmsclient "github.com/hanzokms/terraform-provider/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -24,7 +24,7 @@ func NewIntegrationDatabricksResource() resource.Resource {
 
 // IntegrationDatabricksResource is the resource implementation.
 type IntegrationDatabricksResource struct {
-	client *infisical.Client
+	client *kmsclient.Client
 }
 
 // IntegrationDatabricksResourceModel describes the data source data model.
@@ -49,23 +49,23 @@ func (r *IntegrationDatabricksResource) Metadata(_ context.Context, req resource
 // Schema defines the schema for the resource.
 func (r *IntegrationDatabricksResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "**Deprecated:** This resource is deprecated and will be removed in a future version. Use `infisical_secret_sync_databricks` instead.\n\nCreate Databricks integration & save to Infisical. Only Machine Identity authentication is supported for this resource.",
+		Description: "**Deprecated:** This resource is deprecated and will be removed in a future version. Use `kms_secret_sync_databricks` instead.\n\nCreate Databricks integration & save to Kms. Only Machine Identity authentication is supported for this resource.",
 		Attributes: map[string]schema.Attribute{
 			"integration_auth_id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "The ID of the integration auth, used internally by Infisical.",
+				Description:   "The ID of the integration auth, used internally by Kms.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
 			"integration_id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "The ID of the integration, used internally by Infisical.",
+				Description:   "The ID of the integration, used internally by Kms.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
 			"project_id": schema.StringAttribute{
 				Required:      true,
-				Description:   "The ID of your Infisical project.",
+				Description:   "The ID of your Kms project.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 
@@ -76,7 +76,7 @@ func (r *IntegrationDatabricksResource) Schema(_ context.Context, _ resource.Sch
 
 			"secret_path": schema.StringAttribute{
 				Required:    true,
-				Description: "The secret path in Infisical to sync secrets from.",
+				Description: "The secret path in Kms to sync secrets from.",
 			},
 
 			"databricks_host": schema.StringAttribute{
@@ -104,7 +104,7 @@ func (r *IntegrationDatabricksResource) Configure(_ context.Context, req resourc
 		return
 	}
 
-	client, ok := req.ProviderData.(*infisical.Client)
+	client, ok := req.ProviderData.(*kmsclient.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -137,11 +137,11 @@ func (r *IntegrationDatabricksResource) Create(ctx context.Context, req resource
 	}
 
 	// Create integration auth first
-	auth, err := r.client.CreateIntegrationAuth(infisical.CreateIntegrationAuthRequest{
+	auth, err := r.client.CreateIntegrationAuth(kmsclient.CreateIntegrationAuthRequest{
 		AccessToken: plan.DatabricksAccessToken.ValueString(),
 		URL:         plan.DatabricksHostURL.ValueString(),
 		ProjectID:   plan.ProjectID.ValueString(),
-		Integration: infisical.IntegrationAuthTypeDatabricks,
+		Integration: kmsclient.IntegrationAuthTypeDatabricks,
 	})
 
 	if err != nil {
@@ -153,7 +153,7 @@ func (r *IntegrationDatabricksResource) Create(ctx context.Context, req resource
 	}
 
 	// Create the integration
-	integration, err := r.client.CreateIntegration(infisical.CreateIntegrationRequest{
+	integration, err := r.client.CreateIntegration(kmsclient.CreateIntegrationRequest{
 		IntegrationAuthID: auth.IntegrationAuth.ID,
 		App:               plan.DatabricksSecretScope.ValueString(),
 		SourceEnvironment: plan.Environment.ValueString(),
@@ -198,12 +198,12 @@ func (r *IntegrationDatabricksResource) Read(ctx context.Context, req resource.R
 		return
 	}
 
-	integration, err := r.client.GetIntegration(infisical.GetIntegrationRequest{
+	integration, err := r.client.GetIntegration(kmsclient.GetIntegrationRequest{
 		ID: state.IntegrationID.ValueString(),
 	})
 
 	if err != nil {
-		if err == infisical.ErrNotFound {
+		if err == kmsclient.ErrNotFound {
 			resp.State.RemoveResource(ctx)
 		} else {
 			resp.Diagnostics.AddError(
@@ -250,8 +250,8 @@ func (r *IntegrationDatabricksResource) Update(ctx context.Context, req resource
 		return
 	}
 
-	_, err := r.client.UpdateIntegrationAuth(infisical.UpdateIntegrationAuthRequest{
-		Integration:       infisical.IntegrationAuthTypeDatabricks,
+	_, err := r.client.UpdateIntegrationAuth(kmsclient.UpdateIntegrationAuthRequest{
+		Integration:       kmsclient.IntegrationAuthTypeDatabricks,
 		IntegrationAuthId: plan.IntegrationAuthID.ValueString(),
 		AccessToken:       plan.DatabricksAccessToken.ValueString(),
 		URL:               plan.DatabricksHostURL.ValueString(),
@@ -265,7 +265,7 @@ func (r *IntegrationDatabricksResource) Update(ctx context.Context, req resource
 	}
 
 	// Update the integration
-	updatedIntegration, err := r.client.UpdateIntegration(infisical.UpdateIntegrationRequest{
+	updatedIntegration, err := r.client.UpdateIntegration(kmsclient.UpdateIntegrationRequest{
 		ID:          state.IntegrationID.ValueString(),
 		Environment: plan.Environment.ValueString(),
 		SecretPath:  plan.SecretPath.ValueString(),
@@ -309,7 +309,7 @@ func (r *IntegrationDatabricksResource) Delete(ctx context.Context, req resource
 		return
 	}
 
-	_, err := r.client.DeleteIntegrationAuth(infisical.DeleteIntegrationAuthRequest{
+	_, err := r.client.DeleteIntegrationAuth(kmsclient.DeleteIntegrationAuthRequest{
 		ID: state.IntegrationAuthID.ValueString(),
 	})
 
